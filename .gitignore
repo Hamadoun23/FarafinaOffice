@@ -1,0 +1,33 @@
+# --- secrets : ne doivent JAMAIS partir dans le dépôt ---
+.env
+.env.*
+!.env.example
+supabase-stack/.env
+.admin-password.txt
+*password*.txt
+*.key
+*.pem
+supabase-stack/volumes/db/data/
+supabase-stack/volumes/storage/
+
+# --- dépendances et artefacts ---
+node_modules/
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# --- outils ---
+.vscode/
+.idea/
+.claude/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- journaux et temporaires ---
+*.log
+npm-debug.log*
+.pnpm-debug.log*
+tmp/

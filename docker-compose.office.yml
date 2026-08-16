@@ -1,0 +1,17 @@
+# =============================================================
+#  FarafinaOffice — application Next.js
+#  Écoute uniquement sur la boucle locale ; nginx la publie en
+#  HTTPS sur office.farafinatigne.com.
+# =============================================================
+services:
+  office:
+    build:
+      context: ./app
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL}
+    container_name: farafina-office
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
