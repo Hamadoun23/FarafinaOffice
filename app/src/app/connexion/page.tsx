@@ -4,6 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 
+/* Les noms d'usage sont traduits en adresses internes : « Lefa » devient
+   lefa@farafinatigne.com. Aucune requête préalable, aucune liste de noms
+   exposée — la correspondance est une simple règle d'écriture. */
+const DOMAINE = "farafinatigne.com";
+
 export default function Connexion() {
   const router = useRouter();
   const [identifiant, setIdentifiant] = useState("");
@@ -15,20 +20,28 @@ export default function Connexion() {
     e.preventDefault();
     setErreur("");
     setEnvoi(true);
-    /* On accepte un numéro de téléphone ou une adresse e-mail.
-       Un numéro malien saisi sans indicatif reçoit le +223. */
+    /* Trois facons de se presenter, parce qu'on ne retient pas tous la
+       meme chose : le nom d'usage (« Lefa »), le numero de telephone
+       (avec ou sans indicatif), ou l'adresse e-mail. Le nom d'usage est
+       traduit en adresse interne, sans aller interroger la base. */
     const saisi = identifiant.trim();
     const chiffres = saisi.replace(/[^\d]/g, "");
-    const estNumero = !saisi.includes("@") && chiffres.length >= 8;
-    const phone = chiffres.startsWith("223") ? chiffres : "223" + chiffres;
 
-    const { error } = await supabase.auth.signInWithPassword(
-      estNumero ? { phone, password: motDePasse } : { email: saisi, password: motDePasse }
-    );
+    let creds: { email: string; password: string } | { phone: string; password: string };
+    if (saisi.includes("@")) {
+      creds = { email: saisi, password: motDePasse };
+    } else if (chiffres.length >= 8) {
+      const phone = chiffres.startsWith("223") ? chiffres : "223" + chiffres;
+      creds = { phone, password: motDePasse };
+    } else {
+      creds = { email: saisi.toLowerCase() + "@" + DOMAINE, password: motDePasse };
+    }
+
+    const { error } = await supabase.auth.signInWithPassword(creds);
     setEnvoi(false);
     if (error) {
-      // message générique : on n'indique pas si c'est l'adresse ou le mot de passe
-      setErreur("Numéro ou mot de passe incorrect.");
+      // message générique : on n'indique pas lequel des deux est faux
+      setErreur("Identifiant ou mot de passe incorrect.");
       return;
     }
     router.replace("/");
@@ -43,13 +56,13 @@ export default function Connexion() {
         {erreur && <div className="msg msg--err">{erreur}</div>}
 
         <div className="field">
-          <label htmlFor="email">Numéro de téléphone</label>
+          <label htmlFor="email">Nom d&apos;utilisateur, numéro ou e-mail</label>
           <input
             id="email"
             type="text"
             inputMode="tel"
             autoComplete="username"
-            placeholder="83 75 70 33"
+            placeholder="Lefa, ou 76 87 06 95"
             required
             value={identifiant}
             onChange={(e) => setIdentifiant(e.target.value)}
