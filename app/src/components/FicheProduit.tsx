@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { Champ, Ico, Modal, toast } from "@/components/ui";
 import { euros, prixRemise, promoActive, slugifier, televerser } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
+import ChoixPhoto from "@/components/ChoixPhoto";
 import { SITE_URL as SITE } from "@/lib/supabase";
 
 export type Produit = {
@@ -74,6 +75,7 @@ export default function FicheProduit({
   const [envoi, setEnvoi] = useState(false);
   const [depot, setDepot] = useState(false);
   const [planche, setPlanche] = useState<string[]>([]);
+  const [choix, setChoix] = useState<"principale" | "planche" | null>(null);
   const [tousProduits, setTousProduits] = useState<{ id: string; ref: string; fr_name: string; image_path: string | null }[]>([]);
   const nouveau = !produit.id;
 
@@ -342,6 +344,10 @@ export default function FicheProduit({
             ))}
           </select>
 
+          <button className="btn btn--sm" onClick={() => setChoix("planche")}>
+            Choisir dans le site
+          </button>
+
           <label className="btn btn--sm">
             Importer une photo
             <input type="file" accept="image/*" hidden
@@ -382,6 +388,9 @@ export default function FicheProduit({
             </span>
           )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn btn--sm" onClick={() => setChoix("principale")}>
+              Choisir dans le site
+            </button>
             <label className={`btn btn--sm ${depot ? "btn--ghost" : ""}`}>
               {depot ? "Import en cours…" : "Importer une photo"}
               <input type="file" accept="image/*" hidden disabled={depot}
@@ -397,6 +406,24 @@ export default function FicheProduit({
           </div>
         </div>
       </Champ>
+
+      {choix && (
+        <ChoixPhoto
+          dossier={dossier}
+          multiple={choix === "planche"}
+          titre={choix === "planche" ? "Ajouter des motifs a la planche" : "Choisir la photo principale"}
+          onClose={() => setChoix(null)}
+          onChoisir={(chemins) => {
+            if (choix === "principale") {
+              set("image_path", chemins[0]);
+              toast("Photo choisie.");
+            } else {
+              setPlanche((l) => [...l, ...chemins.filter((c) => !l.includes(c))]);
+              toast(`${chemins.length} motif(s) ajoute(s).`);
+            }
+          }}
+        />
+      )}
     </Modal>
   );
 }

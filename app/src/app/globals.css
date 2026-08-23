@@ -392,6 +392,8 @@ tbody tr:last-child td { border-bottom: none; }
   margin-bottom: 5vh;
 }
 .modal--wide { width: min(900px, 100%); }
+/* Le choix de photo s'ouvre PAR-DESSUS la fiche produit. */
+.ov--haut { z-index: 80; background: rgba(28,13,11,.55); }
 .modal--sm { width: min(430px, 100%); }
 .modal__h {
   padding: 18px 22px; border-bottom: 1px solid var(--line-2); background: var(--g-warm);
