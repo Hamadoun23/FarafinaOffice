@@ -65,6 +65,64 @@ img { max-width: 100%; display: block; }
 ::selection { background: rgba(219,165,78,.35); }
 
 /* =========================================================
+   MODE SOMBRE
+   Meme parti que sur le site : pas de noir plat, un degrade brun
+   chaud qui descend vers l'espresso. Seuls les jetons de surface
+   et d'encre basculent — l'or de la marque ne bouge pas.
+   ========================================================= */
+:root[data-theme="dark"] {
+  --bg:        #1e1210;
+  --surface:   #291a17;
+  --surface-2: #33211c;
+  --surface-3: #3d2822;
+
+  --ink:   #f4eee3;
+  --ink-2: #cdb9aa;
+  --ink-3: #a08c7d;
+
+  --gold-deep: #dba54e;
+
+  --g-warm: linear-gradient(135deg, #3a241e 0%, #2c1b17 100%);
+  --g-side: linear-gradient(180deg, #2b1b17 0%, #201310 100%);
+  --g-page: radial-gradient(1100px 520px at 78% -12%, rgba(219,165,78,.14), transparent 62%),
+            radial-gradient(760px 420px at -8% 8%, rgba(179,119,63,.16), transparent 60%);
+
+  --line:   rgba(248, 247, 238, .15);
+  --line-2: rgba(248, 247, 238, .08);
+
+  --ok-bg:   rgba(23, 117, 74, .22);
+  --warn-bg: rgba(165, 102, 26, .24);
+  --err-bg:  rgba(163, 58, 30, .22);
+  --info-bg: rgba(43, 92, 138, .26);
+  --ok:   #6fd39f;
+  --warn: #e2b269;
+  --err:  #f0917a;
+  --info: #8fbde8;
+
+  --sh-1: 0 1px 2px rgba(0,0,0,.3), 0 6px 18px -12px rgba(0,0,0,.6);
+  --sh-2: 0 2px 4px rgba(0,0,0,.35), 0 18px 40px -20px rgba(0,0,0,.7);
+  --sh-3: 0 30px 70px -24px rgba(0,0,0,.8);
+
+  color-scheme: dark;
+}
+
+:root[data-theme="dark"] .side nav a:hover { background: rgba(248, 247, 238, .07); }
+:root[data-theme="dark"] th { background: rgba(248, 247, 238, .04); }
+:root[data-theme="dark"] tbody tr:hover { background: rgba(219, 165, 78, .09); }
+:root[data-theme="dark"] .ov { background: rgba(0, 0, 0, .58); }
+:root[data-theme="dark"] .thumb { background: rgba(248, 247, 238, .06); }
+:root[data-theme="dark"] .switch i { background: rgba(248, 247, 238, .2); }
+:root[data-theme="dark"] .btn--dark { background: linear-gradient(135deg, #6b4536, #4a2a22); }
+:root[data-theme="dark"] select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7' fill='none'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%23a08c7d' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E");
+}
+:root[data-theme="dark"] .tag--mute { background: rgba(248, 247, 238, .1); color: var(--ink-2); }
+:root[data-theme="dark"] .btn--ghost:hover { background: rgba(248, 247, 238, .08); }
+:root[data-theme="dark"] .nav a .count { background: rgba(248, 247, 238, .1); }
+
+body { transition: background-color .3s ease, color .3s ease; }
+
+/* =========================================================
    1. Structure
    ========================================================= */
 .shell { display: grid; grid-template-columns: var(--sidebar) 1fr; min-height: 100vh; }
@@ -115,6 +173,15 @@ img { max-width: 100%; display: block; }
 .side nav a.on .count { background: rgba(255,255,255,.24); color: #fff; }
 
 .side__foot { margin-top: auto; padding: 14px 14px 0; }
+.side__theme {
+  display: flex; align-items: center; gap: 9px; width: 100%;
+  padding: 9px 12px; margin-bottom: 8px; border-radius: 10px;
+  border: 1px solid var(--line-2); background: var(--surface);
+  font-size: .78rem; font-weight: 700; color: var(--ink-2);
+  transition: border-color .18s, color .18s;
+}
+.side__theme:hover { border-color: var(--gold); color: var(--ink); }
+.side__theme svg { flex: none; }
 .side__me {
   display: flex; align-items: center; gap: 10px; padding: 9px 10px;
   border-radius: 12px; background: var(--surface); border: 1px solid var(--line-2);
@@ -402,6 +469,14 @@ tbody tr:last-child td { border-bottom: none; }
     background: var(--surface); font-size: .8rem; font-weight: 700; box-shadow: var(--sh-1);
   }
   .main { padding: 18px 16px 60px; }
+
+  /* Un tableau de gestion ne se replie pas en une colonne : on lui garde
+     sa largeur utile et on le fait defiler dans son cadre, sinon chaque
+     nom de produit s'empile sur quatre lignes. */
+  .tw table { min-width: 880px; }
+  .tw { -webkit-overflow-scrolling: touch; }
+  .head__act { width: 100%; }
+  .search { flex: 1; min-width: 0; }
   .editor { grid-template-columns: 1fr; height: auto; }
   .editor__frame { height: 58vh; }
   .row, .row--3 { grid-template-columns: 1fr; }

@@ -43,6 +43,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const [qui, setQui] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [ouvert, setOuvert] = useState(false);
+  const [sombre, setSombre] = useState(false);
+
+  /* Le theme est deja pose sur <html> par le script du layout : on se
+     contente de refleter son etat, puis de l'inverser et le retenir. */
+  useEffect(() => {
+    setSombre(document.documentElement.getAttribute("data-theme") === "dark");
+  }, []);
+
+  function basculerTheme() {
+    const suivant = document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", suivant);
+    try { localStorage.setItem("fo-theme", suivant); } catch { /* navigation privee */ }
+    setSombre(suivant === "dark");
+  }
 
   useEffect(() => { setOuvert(false); }, [path]);
 
@@ -110,6 +124,10 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <div className="side__foot">
+          <button className="side__theme" onClick={basculerTheme}>
+            <Ico n={sombre ? "sun" : "moon"} s={16} />
+            {sombre ? "Thème clair" : "Thème sombre"}
+          </button>
           <div className="side__me">
             <i>{(qui ?? "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase()}</i>
             <div>

@@ -7,10 +7,20 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+/**
+ * Le theme est pose sur <html> AVANT le premier rendu : applique plus
+ * tard, l'ecran s'afficherait en clair puis basculerait. Tant que
+ * l'utilisateur n'a rien choisi, on suit le reglage de son systeme.
+ */
+const THEME_BOOT = `(function(){try{var t=localStorage.getItem("fo-theme");
+if(t!=="dark"&&t!=="light"){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}
+document.documentElement.setAttribute("data-theme",t);}catch(e){}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
       <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
