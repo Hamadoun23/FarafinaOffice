@@ -459,6 +459,93 @@ tbody tr:last-child td { border-bottom: none; }
 .editor__key { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .72rem; color: var(--ink-3); word-break: break-all; margin-bottom: 14px; }
 
 /* =========================================================
+   9 bis. FACTURE IMPRIMABLE
+   Reprise du modele de la maison. La feuille reste blanche dans
+   les deux themes : une facture s'imprime, elle ne se decline pas.
+   ========================================================= */
+.fac__barre {
+  max-width: 210mm; margin: 18px auto 10px; display: flex;
+  justify-content: space-between; gap: 12px; padding: 0 12px;
+}
+.fac__vide { display: grid; place-items: center; min-height: 60vh; color: var(--ink-3); }
+
+.fac {
+  max-width: 210mm; margin: 0 auto 40px; background: #fff; color: #2f3542;
+  padding: 16mm 14mm; box-shadow: var(--sh-2); border-radius: 4px;
+  font-size: 10.5pt; line-height: 1.45;
+}
+.fac * { color: inherit; }
+
+.fac__tete { display: grid; grid-template-columns: 150px 1fr 190px; gap: 18px; align-items: start; }
+.fac__logo img { width: 100%; height: auto; object-fit: contain; }
+.fac__logo-vide {
+  border: 2px solid #2f3542; border-radius: 50%; padding: 26px 10px;
+  text-align: center; font-weight: 800; letter-spacing: .04em; font-size: .8rem;
+}
+.fac__maison h1 {
+  font-size: 15pt; font-weight: 800; letter-spacing: .04em; margin-bottom: 10px; color: #1f242e;
+}
+.fac__maison p { margin-bottom: 4px; }
+.fac__maison p b { font-weight: 700; }
+.fac__maison p span { color: #6b7280; }
+.fac__maison a { color: #2563a8; text-decoration: underline; }
+.fac__ico { color: #4b5563; }
+
+.fac__meta { text-align: right; }
+.fac__meta div { margin-bottom: 12px; }
+.fac__meta span {
+  display: block; font-size: 7.6pt; letter-spacing: .12em; text-transform: uppercase;
+  color: #6b7280; font-weight: 700; margin-bottom: 2px;
+}
+.fac__meta b { font-weight: 600; font-size: 10.5pt; }
+
+.fac__client { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+.fac__client span {
+  font-size: 7.6pt; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; font-weight: 700;
+}
+.fac__client h2 { font-size: 13pt; font-weight: 700; margin: 6px 0 4px; color: #1f242e; }
+
+.fac__lignes { width: 100%; border-collapse: collapse; margin-top: 24px; }
+.fac__lignes th {
+  font-size: 7.6pt; letter-spacing: .11em; text-transform: uppercase; color: #6b7280;
+  font-weight: 700; text-align: left; padding: 0 8px 10px; background: none; border: none;
+}
+.fac__lignes th.d, .fac__lignes td.d { text-align: right; }
+.fac__lignes td {
+  padding: 13px 8px; border-bottom: 1px dotted #cbd0d8; vertical-align: top; background: none;
+}
+.fac__lignes tbody tr:hover { background: none; }
+.fac__lignes td i { display: block; font-style: normal; font-size: 8pt; color: #9aa1ac; margin-top: 2px; }
+.fac__lignes td b { font-weight: 600; }
+
+.fac__totaux { margin-top: 4px; margin-left: auto; width: 52%; }
+.fac__ligne-total {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
+  padding: 13px 8px; border-bottom: 1px dotted #cbd0d8;
+}
+.fac__ligne-total span {
+  font-size: 7.6pt; letter-spacing: .11em; text-transform: uppercase; color: #6b7280; font-weight: 700;
+}
+.fac__ligne-total b { font-weight: 600; }
+.fac__ligne-total--du { border-bottom: none; border-top: 1px solid #e5e7eb; padding-top: 16px; }
+.fac__ligne-total--du b { font-size: 15pt; font-weight: 700; color: #1f242e; }
+
+.fac__pied { margin-top: 46px; color: #6b7280; font-size: 9.5pt; }
+.fac__note { margin-bottom: 8px; color: #2f3542; white-space: pre-wrap; }
+.fac__mentions { margin-top: 8px; font-size: 8.5pt; }
+
+@media print {
+  @page { size: A4; margin: 12mm; }
+  body { background: #fff !important; }
+  .fac__barre { display: none !important; }
+  .fac {
+    max-width: none; margin: 0; padding: 0; box-shadow: none; border-radius: 0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .fac__lignes tr, .fac__ligne-total { break-inside: avoid; }
+}
+
+/* =========================================================
    10. Adaptatif
    ========================================================= */
 .burger { display: none; }

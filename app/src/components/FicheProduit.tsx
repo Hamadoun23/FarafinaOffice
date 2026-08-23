@@ -8,9 +8,10 @@
  * modifie a deux endroits differents.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Champ, Ico, Modal, toast } from "@/components/ui";
-import { enregistrer, euros, prixRemise, promoActive, slugifier, televerser } from "@/lib/db";
+import { euros, prixRemise, promoActive, slugifier, televerser } from "@/lib/db";
+import { supabase } from "@/lib/supabase";
 import { SITE_URL as SITE } from "@/lib/supabase";
 
 export type Produit = {
@@ -72,7 +73,23 @@ export default function FicheProduit({
   const [f, setF] = useState<Partial<Produit>>({ ...produit });
   const [envoi, setEnvoi] = useState(false);
   const [depot, setDepot] = useState(false);
+  const [planche, setPlanche] = useState<string[]>([]);
+  const [tousProduits, setTousProduits] = useState<{ id: string; ref: string; fr_name: string; image_path: string | null }[]>([]);
   const nouveau = !produit.id;
+
+  /* La planche de motifs : les photos secondaires d'un assortiment.
+     Elles vivent dans product_images, une table a part, parce qu'une
+     reference peut en porter vingt. */
+  useEffect(() => {
+    if (!produit.id) return;
+    supabase.from("product_images").select("path").eq("product_id", produit.id).order("position")
+      .then(({ data }) => setPlanche((data ?? []).map((r: { path: string }) => r.path)));
+  }, [produit.id]);
+
+  useEffect(() => {
+    supabase.from("products").select("id,ref,fr_name,image_path").order("ref")
+      .then(({ data }) => setTousProduits((data ?? []) as typeof tousProduits));
+  }, []);
   const set = (k: keyof Produit, v: unknown) => setF((x) => ({ ...x, [k]: v }));
 
   const sousDeLaCat = subs.filter((s) => s.category_id === f.category_id);
@@ -97,13 +114,13 @@ export default function FicheProduit({
     if (!f.category_id) return toast("Choisissez une categorie.", "err");
 
     setEnvoi(true);
-    const ok = await enregistrer("products", {
-      ref: f.ref!.trim(),
-      slug: f.slug?.trim() || slugifier(f.fr_name!),
+    const valeurs = {
+      ref: f.ref.trim(),
+      slug: f.slug?.trim() || slugifier(f.fr_name),
       category_id: f.category_id,
       subcategory_id: f.subcategory_id || null,
-      fr_name: f.fr_name!.trim(), fr_desc: f.fr_desc ?? "",
-      en_name: (f.en_name || f.fr_name)!.trim(), en_desc: f.en_desc ?? "",
+      fr_name: f.fr_name.trim(), fr_desc: f.fr_desc ?? "",
+      en_name: (f.en_name || f.fr_name).trim(), en_desc: f.en_desc ?? "",
       price: f.price === null || f.price === undefined || String(f.price) === "" ? null : Number(f.price),
       price_from: !!f.price_from,
       unit: f.unit || "piece",
@@ -115,9 +132,40 @@ export default function FicheProduit({
       discount_until: f.discount_until || null,
       is_published: f.is_published ?? true,
       position: Number(f.position ?? 0),
-    }, produit.id ?? null);
+    };
+
+    /* On passe par supabase directement — et non par le raccourci
+       enregistrer() — pour recuperer l'identifiant d'un produit tout
+       juste cree : la planche de motifs en a besoin. */
+    const res = produit.id
+      ? await supabase.from("products").update(valeurs).eq("id", produit.id).select("id").single()
+      : await supabase.from("products").insert(valeurs).select("id").single();
+
+    if (res.error || !res.data) {
+      setEnvoi(false);
+      const m = res.error?.message ?? "";
+      return toast(
+        m.includes("duplicate key") ? "Cette reference ou cet identifiant existe deja." : "Echec : " + m,
+        "err"
+      );
+    }
+
+    /* la planche est reecrite en entier : c'est une liste courte, et
+       cela evite d'avoir a suivre chaque ajout et chaque retrait */
+    const id = res.data.id as string;
+    await supabase.from("product_images").delete().eq("product_id", id);
+    if (planche.length) {
+      const { error } = await supabase.from("product_images").insert(
+        planche.map((chemin, i) => ({
+          product_id: id, path: chemin, alt: f.fr_name ?? "", position: i,
+        }))
+      );
+      if (error) { setEnvoi(false); return toast("Planche refusee : " + error.message, "err"); }
+    }
+
     setEnvoi(false);
-    if (ok) onSaved();
+    toast(produit.id ? "Modification enregistree." : "Ajout enregistre.");
+    onSaved();
   }
 
   return (
@@ -244,6 +292,84 @@ export default function FicheProduit({
         <Champ label="Description (anglais)">
           <textarea value={f.en_desc ?? ""} onChange={(e) => set("en_desc", e.target.value)} />
         </Champ>
+      </div>
+
+      {/* ---------- planche de motifs : les lots ---------- */}
+      <div style={{
+        border: "1px solid var(--line-2)", borderRadius: "var(--r-m)",
+        background: "var(--surface-2)", padding: "14px 16px", marginBottom: 16,
+      }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <div className="section-t" style={{ marginBottom: 4 }}>Planche de motifs · {planche.length}</div>
+          <span className="sub">Pour les references vendues par lot</span>
+        </div>
+        <p className="sub" style={{ marginBottom: 12 }}>
+          Ces photos s&apos;affichent en carrousel sous la fiche, sur le site : l&apos;acheteur
+          voit la collection dans laquelle l&apos;atelier puise, sans choisir un modele.
+        </p>
+
+        {planche.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 12 }}>
+            {planche.map((chemin, i) => (
+              <span key={chemin + i} style={{ position: "relative" }}>
+                <img className="thumb" style={{ width: 54, height: 66 }} src={photoProduit(chemin)} alt="" />
+                <button className="btn btn--icon"
+                        title="Retirer de la planche"
+                        style={{
+                          position: "absolute", top: -6, right: -6, width: 22, height: 22,
+                          background: "var(--surface)", border: "1px solid var(--line)",
+                        }}
+                        onClick={() => setPlanche((p) => p.filter((_, j) => j !== i))}>
+                  <Ico n="x" s={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <select value="" style={{ maxWidth: 300, fontSize: ".82rem" }}
+                  onChange={(e) => {
+                    const p = tousProduits.find((x) => x.id === e.target.value);
+                    if (p?.image_path && !planche.includes(p.image_path)) {
+                      setPlanche((l) => [...l, p.image_path!]);
+                    }
+                    e.target.value = "";
+                  }}>
+            <option value="">+ Reprendre la photo d&apos;une reference…</option>
+            {tousProduits.filter((p) => p.image_path && p.id !== produit.id).map((p) => (
+              <option key={p.id} value={p.id}>{p.ref} · {p.fr_name}</option>
+            ))}
+          </select>
+
+          <label className="btn btn--sm">
+            Importer une photo
+            <input type="file" accept="image/*" hidden
+                   onChange={async (e) => {
+                     const file = e.target.files?.[0];
+                     e.target.value = "";
+                     if (!file) return;
+                     if (!f.category_id) return toast("Choisissez d'abord la categorie.", "err");
+                     setDepot(true);
+                     const url = await televerser(file, dossier, (f.slug || "motif") + "-motif");
+                     setDepot(false);
+                     if (url) { setPlanche((l) => [...l, url]); toast("Motif ajoute a la planche."); }
+                   }} />
+          </label>
+
+          {planche.length > 0 && (
+            <button className="btn btn--sm btn--danger" onClick={() => setPlanche([])}>
+              Vider la planche
+            </button>
+          )}
+        </div>
+
+        {planche.length > 0 && f.unit !== "lot" && (
+          <p className="sub" style={{ marginTop: 10, color: "var(--warn)" }}>
+            Cette reference porte une planche mais n&apos;est pas vendue « par lot ».
+            Passez « Vendu » sur <strong>Par lot / assortiment</strong> et indiquez la quantite.
+          </p>
+        )}
       </div>
 
       <Champ label="Photo" aide={`Importee dans assets/${dossier} — comme les photos livrees avec le site.`}>

@@ -27,7 +27,10 @@ export default function Compte() {
     supabase.auth.getUser().then(({ data }) => {
       const u = data.user;
       if (!u) return;
-      setIdentifiant(u.phone ? "+223 " + u.phone.replace(/^223/, "") : u.email ?? "");
+      const meta = u.user_metadata ?? {};
+      const contact = u.phone ? "+223 " + u.phone.replace(/^223/, "") : u.email ?? "";
+      const nom = (meta.name as string) || (meta.full_name as string) || "";
+      setIdentifiant(nom ? `${nom} · ${contact}` : contact);
       setObligatoire(u.user_metadata?.must_change_password === true);
     });
   }, []);

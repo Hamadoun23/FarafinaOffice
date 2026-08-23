@@ -31,8 +31,13 @@ const GROUPES: { titre: string; liens: { href: string; label: string; ico: strin
       { href: "/clients", label: "Clients", ico: "users" },
       { href: "/commandes", label: "Commandes", ico: "cart" },
       { href: "/devis", label: "Devis", ico: "bill" },
+      { href: "/factures", label: "Factures", ico: "bill" },
       { href: "/relances", label: "Relances", ico: "bell" },
     ],
+  },
+  {
+    titre: "Configuration",
+    liens: [{ href: "/reglages", label: "Reglages", ico: "cog" }],
   },
 ];
 
@@ -41,9 +46,20 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
   const router = useRouter();
   const [qui, setQui] = useState<string | null>(null);
+  const [identifiant, setIdentifiant] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
   const [ouvert, setOuvert] = useState(false);
   const [sombre, setSombre] = useState(false);
+
+  /** Comment nommer la personne connectee : son nom d'usage s'il est
+      renseigne, sinon son numero ou son adresse. */
+  function nomDe(u: { phone?: string | null; email?: string | null; user_metadata?: Record<string, unknown> } | null | undefined) {
+    if (!u) return { nom: null, id: null };
+    const meta = u.user_metadata ?? {};
+    const contact = u.phone ? "+223 " + String(u.phone).replace(/^223/, "") : u.email ?? null;
+    const nom = (meta.name as string) || (meta.full_name as string) || contact;
+    return { nom, id: contact };
+  }
 
   /* Le theme est deja pose sur <html> par le script du layout : on se
      contente de refleter son etat, puis de l'inverser et le retenir. */
@@ -66,7 +82,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       if (!u) {
         router.replace("/connexion");
       } else {
-        setQui(u.phone ? "+223 " + u.phone.replace(/^223/, "") : u.email ?? null);
+        const q = nomDe(u); setQui(q.nom); setIdentifiant(q.id);
         /* mot de passe encore provisoire : on impose le changement */
         if (u.user_metadata?.must_change_password === true && path !== "/compte") {
           router.replace("/compte");
@@ -76,7 +92,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
     });
     const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
       if (!session) router.replace("/connexion");
-      else setQui(session.user.phone ? "+223 " + session.user.phone.replace(/^223/, "") : session.user.email ?? null);
+      else { const q = nomDe(session.user); setQui(q.nom); setIdentifiant(q.id); }
     });
     return () => sub.subscription.unsubscribe();
   }, [router, path]);
@@ -131,7 +147,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           <div className="side__me">
             <i>{(qui ?? "?").replace(/[^A-Za-z0-9]/g, "").slice(0, 2).toUpperCase()}</i>
             <div>
-              <Link href="/compte"><small title={qui ?? ""}>{qui}</small></Link>
+              <Link href="/compte"><small title={identifiant ?? ""}>{qui}</small></Link>
               <button
                 onClick={async () => {
                   await supabase.auth.signOut();

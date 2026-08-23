@@ -143,6 +143,25 @@ export const euros = (n: number | null | undefined) =>
     ? "sur demande"
     : Number(n).toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
 
+/** Montant dans la devise de la facture (la boutique reste en euros). */
+export const DEVISES = [
+  { code: "USD", symbole: "$" },
+  { code: "EUR", symbole: "€" },
+  { code: "XOF", symbole: "FCFA" },
+];
+
+export function montant(n: number | null | undefined, devise = "USD") {
+  const v = Number(n ?? 0);
+  if (devise === "XOF") return Math.round(v).toLocaleString("fr-FR") + " FCFA";
+  /* Chaque devise s'ecrit dans sa langue : « $2,157.00 » pour un client
+     a l'export, « 2 157,00 EUR » pour un europeen. */
+  const langue = devise === "USD" ? "en-US" : "fr-FR";
+  return v.toLocaleString(langue, {
+    style: "currency", currency: devise,
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  });
+}
+
 export const jour = (s: string | null | undefined) =>
   s ? new Date(s).toLocaleDateString("fr-FR", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
