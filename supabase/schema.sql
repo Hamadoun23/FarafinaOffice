@@ -73,6 +73,11 @@ create table if not exists public.products (
   set_qty        int,                              -- quantité si vendu par lot
   sizes          text,                             -- ex. « XXS → XXL »
 
+  -- promotion : une remise en pourcentage posée par-dessus le prix de gros,
+  -- qui s'arrête d'elle-même à la date de fin (voir migrations/2026-08-23)
+  discount_percent int  not null default 0 check (discount_percent between 0 and 90),
+  discount_until   date,
+
   tag            text,                    -- signature | best | gros | piece-speciale | nouveau
   image_path     text,                    -- chemin dans le bucket product-images
   is_published   boolean not null default true,
@@ -286,11 +291,19 @@ begin
   end if;
 end $$;
 
-alter publication supabase_realtime add table public.orders;
-alter publication supabase_realtime add table public.order_items;
-alter publication supabase_realtime add table public.customers;
-alter publication supabase_realtime add table public.leads;
-alter publication supabase_realtime add table public.quotes;
+-- Ajout relançable : « add table » échoue si la table est déjà publiée.
+do $$
+declare t text;
+begin
+  foreach t in array array['orders','order_items','customers','leads','quotes','follow_ups'] loop
+    if not exists (
+      select 1 from pg_publication_tables
+      where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = t
+    ) then
+      execute format('alter publication supabase_realtime add table public.%I', t);
+    end if;
+  end loop;
+end $$;
 
 -- =============================================================
 --  11. STOCKAGE DES IMAGES

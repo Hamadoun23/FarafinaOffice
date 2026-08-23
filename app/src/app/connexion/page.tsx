@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase";
 
 export default function Connexion() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [identifiant, setIdentifiant] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
   const [erreur, setErreur] = useState("");
   const [envoi, setEnvoi] = useState(false);
@@ -15,14 +15,20 @@ export default function Connexion() {
     e.preventDefault();
     setErreur("");
     setEnvoi(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password: motDePasse,
-    });
+    /* On accepte un numéro de téléphone ou une adresse e-mail.
+       Un numéro malien saisi sans indicatif reçoit le +223. */
+    const saisi = identifiant.trim();
+    const chiffres = saisi.replace(/[^\d]/g, "");
+    const estNumero = !saisi.includes("@") && chiffres.length >= 8;
+    const phone = chiffres.startsWith("223") ? chiffres : "223" + chiffres;
+
+    const { error } = await supabase.auth.signInWithPassword(
+      estNumero ? { phone, password: motDePasse } : { email: saisi, password: motDePasse }
+    );
     setEnvoi(false);
     if (error) {
       // message générique : on n'indique pas si c'est l'adresse ou le mot de passe
-      setErreur("Identifiants incorrects.");
+      setErreur("Numéro ou mot de passe incorrect.");
       return;
     }
     router.replace("/");
@@ -37,14 +43,16 @@ export default function Connexion() {
         {erreur && <div className="msg msg--err">{erreur}</div>}
 
         <div className="field">
-          <label htmlFor="email">Adresse e-mail</label>
+          <label htmlFor="email">Numéro de téléphone</label>
           <input
             id="email"
-            type="email"
+            type="text"
+            inputMode="tel"
             autoComplete="username"
+            placeholder="83 75 70 33"
             required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={identifiant}
+            onChange={(e) => setIdentifiant(e.target.value)}
           />
         </div>
 
@@ -60,7 +68,7 @@ export default function Connexion() {
           />
         </div>
 
-        <button className="btn" style={{ width: "100%" }} disabled={envoi}>
+        <button className="btn btn--main" style={{ width: "100%" }} disabled={envoi}>
           {envoi ? "Connexion…" : "Se connecter"}
         </button>
       </form>

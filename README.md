@@ -7,14 +7,38 @@ du site vitrine et suit l'activité commerciale.
 
 ## Ce que l'application doit permettre
 
-| Domaine | Fonctions |
+| Écran | Fonctions |
 |---|---|
-| Contenus | modifier les textes du site (FR/EN), sans toucher au code |
-| Catalogue | créer et modifier les produits : nom, description, prix, photo, catégorie, publication |
-| Clients | base alimentée en temps réel par le catalogue PDF, le formulaire de contact et les demandes de devis |
-| Commandes | suivre les demandes reçues, changer leur statut, voir le détail des articles |
-| Devis | établir une facture proforma à partir d'une commande, l'envoyer, suivre son acceptation |
-| Relances | programmer un rappel WhatsApp ou e-mail sur un client ou une commande |
+| Tableau de bord | chiffres clés, dernières commandes, points à surveiller — en temps réel |
+| Modifier le site | éditeur en direct : cliquer un texte, un prix ou une image dans la page |
+| Textes | ajouter, modifier, supprimer les textes du site (FR/EN), sans toucher au code |
+| Produits | créer, modifier, dupliquer, supprimer : nom, description, prix, photo, catégorie, étiquette, publication |
+| Catégories | familles et sous-familles du catalogue, avec leur ordre d'affichage |
+| Clients | fiches et prospects du catalogue PDF ; création manuelle, modification, conversion d'un prospect en client |
+| Commandes | saisir ou suivre une demande, en éditer les articles, changer le statut, en tirer un devis |
+| Devis | facture proforma : montant, transport, validité, statut, rattachement à une commande |
+| Relances | programmer un rappel WhatsApp, e-mail ou appel, le cocher quand il est fait |
+
+Chaque écran suit la même grammaire : **une recherche, des filtres en pastilles,
+un tableau, un bouton « Ajouter »** ; les actions *modifier / dupliquer /
+supprimer* sont au bout de chaque ligne, et toute suppression demande
+confirmation. Les valeurs les plus courantes (prix, publication, statut) se
+changent directement dans le tableau, sans ouvrir de fenêtre.
+
+## Habillage
+
+La palette reste celle du bandeau de marque (ivoire, or, fauve, brun) mais le
+brun profond ne sert plus qu'au **texte et aux accents** : les surfaces sont
+claires et les aplats remplacés par des **dégradés** — halo or de la page,
+barre latérale ivoire, boutons et pastilles actives en dégradé or → fauve.
+Tout est défini en variables dans [`app/src/app/globals.css`](app/src/app/globals.css) ;
+les écrans n'écrivent quasiment aucun style.
+
+Les briques communes vivent dans deux fichiers :
+[`components/ui.tsx`](app/src/components/ui.tsx) (fenêtre modale, confirmation,
+champ, notifications, icônes) et [`lib/db.ts`](app/src/lib/db.ts) (chargement
+temps réel, enregistrement, suppression, téléversement, messages d'erreur
+traduits). Un nouvel écran tient en une centaine de lignes.
 
 ## Architecture retenue
 
@@ -129,7 +153,6 @@ docker compose -f docker-compose.office.yml up -d --build
 
 ## Ce qu'il reste à faire
 
-- Écran **relances** (la table `follow_ups` est prête)
 - Génération du PDF de facture proforma
 - Enregistrer les demandes de devis du site directement dans `orders`
 - Configurer le SMTP pour les invitations et mots de passe oubliés

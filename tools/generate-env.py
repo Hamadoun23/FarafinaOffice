@@ -72,7 +72,10 @@ SUPABASE_SECRET_KEY=
 JWT_KEYS=
 JWT_JWKS=
 SECRET_KEY_BASE={rand(64)}
-REALTIME_DB_ENC_KEY={rand(32)}
+# Chiffrement AES-128 cote Realtime : la cle doit faire EXACTEMENT
+# 16 caracteres, sinon le service boucle sur « Bad key size » et le
+# temps reel ne demarre jamais.
+REALTIME_DB_ENC_KEY={rand(16)}
 VAULT_ENC_KEY={rand(32)}
 PG_META_CRYPTO_KEY={rand(32)}
 LOGFLARE_PUBLIC_ACCESS_TOKEN={rand(32)}
@@ -129,6 +132,11 @@ SMTP_PASS=
 SMTP_SENDER_NAME=Farafinatigne
 
 # --- stockage ---
+# Le service Storage ecrit sur disque (STORAGE_BACKEND=file), mais il
+# prefixe toujours ses chemins par GLOBAL_S3_BUCKET. Laisse vide, la cle
+# commence par « / » et tout televersement est refuse : « must be a
+# relative path ». La valeur n'a pas d'importance, elle doit exister.
+GLOBAL_S3_BUCKET=stub
 REGION=eu-west-1
 MINIO_ROOT_USER=farafina
 MINIO_ROOT_PASSWORD={rand(32)}

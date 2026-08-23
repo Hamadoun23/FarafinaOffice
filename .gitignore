@@ -9,6 +9,8 @@ supabase-stack/.env
 *.pem
 supabase-stack/volumes/db/data/
 supabase-stack/volumes/storage/
+# les sauvegardes de base contiennent les donnees clients : jamais en depot
+supabase/backups/
 
 # --- dépendances et artefacts ---
 node_modules/
