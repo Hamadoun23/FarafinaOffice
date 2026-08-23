@@ -62,7 +62,6 @@ export default function Connexion() {
             type="text"
             inputMode="tel"
             autoComplete="username"
-            placeholder="Lefa, ou 76 87 06 95"
             required
             value={identifiant}
             onChange={(e) => setIdentifiant(e.target.value)}
