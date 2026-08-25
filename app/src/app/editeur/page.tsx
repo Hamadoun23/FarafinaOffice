@@ -163,7 +163,11 @@ export default function Editeur() {
               Recharger
             </button>
           </div>
-          <iframe ref={frame} src={src} title="Apercu du site" />
+          {/* Le cadre se recharge a chaque enregistrement. On se signale a
+              chaque chargement : c'est ce qui rearme le pont d'edition sur
+              les navigateurs qui ne savent pas nommer leur parent. */}
+          <iframe ref={frame} src={src} title="Apercu du site"
+                  onLoad={() => versLeSite({ type: "hello" })} />
         </div>
 
         <aside className="editor__panel">
