@@ -95,6 +95,26 @@ export default function FicheProduit({
   const set = (k: keyof Produit, v: unknown) => setF((x) => ({ ...x, [k]: v }));
 
   const sousDeLaCat = subs.filter((s) => s.category_id === f.category_id);
+
+  /* La reference est attribuee par la base : elle porte les initiales de la
+     gamme et de la sous-gamme, puis un compteur propre a ce couple. On la
+     demande a chaque changement de rangement, tant que la fiche est neuve —
+     une reference deja portee par un produit ne bouge jamais. */
+  useEffect(() => {
+    if (!nouveau || !f.category_id) return;
+    let vivant = true;
+    supabase
+      .rpc("prochaine_reference", {
+        p_categorie: f.category_id,
+        p_sous_categorie: f.subcategory_id || null,
+      })
+      .then(({ data, error }) => {
+        if (!vivant || error || !data) return;
+        setF((x) => ({ ...x, ref: data as string }));
+      });
+    return () => { vivant = false; };
+  }, [nouveau, f.category_id, f.subcategory_id]);
+
   const dossier = dossierPhoto(cats, subs, f);
   const remise = promoActive(f.discount_percent, f.discount_until);
   const prixFinal = prixRemise(
@@ -112,7 +132,7 @@ export default function FicheProduit({
 
   async function valider() {
     if (!f.fr_name?.trim()) return toast("Le nom francais est obligatoire.", "err");
-    if (!f.ref?.trim()) return toast("La reference est obligatoire.", "err");
+    if (!f.ref?.trim()) return toast("Choisissez une gamme : la reference en decoule.", "err");
     if (!f.category_id) return toast("Choisissez une categorie.", "err");
 
     setEnvoi(true);
@@ -204,8 +224,14 @@ export default function FicheProduit({
       </div>
 
       <div className="row--3" style={{ display: "grid", gap: 12 }}>
-        <Champ label="Reference" aide="Ex. FT-BJ-014 — unique.">
-          <input className="mono" value={f.ref ?? ""} onChange={(e) => set("ref", e.target.value.toUpperCase())} />
+        <Champ
+          label="Reference"
+          aide={nouveau
+            ? "Attribuee toute seule d'apres la gamme et la sous-gamme."
+            : "Fixee a la creation : elle ne change plus."}
+        >
+          <input className="mono" value={f.ref ?? ""} readOnly disabled
+                 placeholder={f.category_id ? "…" : "choisissez d'abord la gamme"} />
         </Champ>
         <Champ label="Gamme">
           <select value={f.category_id ?? ""}

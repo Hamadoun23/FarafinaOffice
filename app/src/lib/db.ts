@@ -93,22 +93,99 @@ export async function majChamp(
 }
 
 /**
+ * Prepare une image avant envoi.
+ *
+ * Une photo prise au telephone pese 4 a 8 Mo et arrive parfois en HEIC,
+ * que seul Safari sait lire. On la redessine donc dans un canvas et on
+ * la renvoie en JPEG : format unique, poids divise par vingt, et plus
+ * de « Load failed » sur une connexion lente. Si le navigateur n'y
+ * arrive pas, on renvoie le fichier tel quel plutot que de bloquer.
+ */
+async function preparerImage(fichier: File, maxCote = 1600, qualite = 0.82): Promise<Blob> {
+  if (/^image\/(svg|gif)/i.test(fichier.type)) return fichier;
+  try {
+    const source = await lireImage(fichier);
+    const large = "width" in source ? source.width : 0;
+    const haut = "height" in source ? source.height : 0;
+    if (!large || !haut) return fichier;
+
+    const ech = Math.min(1, maxCote / Math.max(large, haut));
+    const c = document.createElement("canvas");
+    c.width = Math.round(large * ech);
+    c.height = Math.round(haut * ech);
+    const ctx = c.getContext("2d");
+    if (!ctx) return fichier;
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.drawImage(source as CanvasImageSource, 0, 0, c.width, c.height);
+    if ("close" in source) (source as ImageBitmap).close();
+
+    const blob: Blob | null = await new Promise((res) => c.toBlob(res, "image/jpeg", qualite));
+    /* on ne garde la version preparee que si elle est vraiment plus legere */
+    return blob && blob.size > 0 && blob.size < fichier.size ? blob : fichier;
+  } catch {
+    return fichier;
+  }
+}
+
+/** createImageBitmap quand il existe, sinon un <img> — Safari ancien. */
+function lireImage(fichier: File): Promise<ImageBitmap | HTMLImageElement> {
+  if (typeof createImageBitmap === "function") {
+    return createImageBitmap(fichier);
+  }
+  return new Promise((res, rej) => {
+    const url = URL.createObjectURL(fichier);
+    const img = new Image();
+    img.onload = () => { URL.revokeObjectURL(url); res(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); rej(new Error("image illisible")); };
+    img.src = url;
+  });
+}
+
+/**
  * Televerse une image dans le bucket public.
  * Le fichier est range comme en local : produits/<gamme>/<sous-gamme>/<nom>.
+ *
+ * Un echec reseau est reessaye une fois : sur une liaison instable, la
+ * premiere tentative echoue souvent alors que la seconde passe.
  */
 export async function televerser(
   fichier: File,
   dossier: string,
   base: string
 ): Promise<string | null> {
-  const ext = fichier.name.split(".").pop()?.toLowerCase() || "jpg";
+  if (!fichier.type.startsWith("image/")) {
+    toast("Ce fichier n'est pas une image.", "err");
+    return null;
+  }
+
+  const corps = await preparerImage(fichier);
+  const jpeg = corps !== fichier || /jpe?g/i.test(fichier.type);
+  const ext = jpeg ? "jpg" : (fichier.name.split(".").pop()?.toLowerCase() || "jpg");
   const propre = (base || "photo").replace(/[^a-z0-9-]/gi, "-").toLowerCase();
   const chemin = `${dossier.replace(/^\/+|\/+$/g, "")}/${propre}-${Date.now()}.${ext}`;
-  const { error } = await supabase.storage
-    .from("product-images")
-    .upload(chemin, fichier, { cacheControl: "31536000", upsert: true });
-  if (error) { toast("Televersement refuse : " + error.message, "err"); return null; }
-  return supabase.storage.from("product-images").getPublicUrl(chemin).data.publicUrl;
+  const type = corps instanceof File ? fichier.type : "image/jpeg";
+
+  for (let essai = 1; essai <= 2; essai++) {
+    const { error } = await supabase.storage
+      .from("product-images")
+      .upload(chemin, corps, { cacheControl: "31536000", upsert: true, contentType: type });
+    if (!error) {
+      return supabase.storage.from("product-images").getPublicUrl(chemin).data.publicUrl;
+    }
+    const reseau = /load failed|failed to fetch|network|timeout/i.test(error.message);
+    if (!reseau || essai === 2) {
+      toast(
+        reseau
+          ? "Envoi interrompu. Verifiez la connexion et reessayez."
+          : "Televersement refuse : " + error.message,
+        "err"
+      );
+      return null;
+    }
+    await new Promise((r) => setTimeout(r, 1200));
+  }
+  return null;
 }
 
 /** Prix effectivement paye, remise appliquee. */

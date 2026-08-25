@@ -22,7 +22,38 @@ const GROUPES: Record<string, { titre: string; aide: string }> = {
     titre: "Facturation",
     aide: "Numerotation, devise et mentions de bas de page.",
   },
+  site: {
+    titre: "Etat du site",
+    aide: "De quoi prevenir vos clients — conges, inventaire, rupture — sans passer par personne.",
+  },
 };
+
+/** Les etats possibles, du plus discret au plus ferme. */
+const ETATS = [
+  { v: "ouvert",  l: "Ouvert — rien ne change" },
+  { v: "annonce", l: "Bandeau d'information — la boutique reste ouverte" },
+  { v: "ferme",   l: "Ferme — le catalogue reste visible, les commandes sont suspendues" },
+];
+
+/** Trois messages prets a l'emploi. L'administrateur en choisit un puis
+    le reecrit s'il veut : ce sont des points de depart, pas des modeles. */
+const MESSAGES = [
+  {
+    quoi: "Conges",
+    titre: "Boutique fermee pour conges",
+    texte: "L'atelier ferme jusqu'a nouvel ordre. Vous pouvez parcourir le catalogue : nous repondrons a vos demandes des la reouverture.",
+  },
+  {
+    quoi: "Inventaire",
+    titre: "Inventaire en cours",
+    texte: "Nous comptons nos stocks et mettons les prix a jour. Les commandes reprennent dans quelques jours — ecrivez-nous, nous vous rappellerons.",
+  },
+  {
+    quoi: "Nouvelle collection",
+    titre: "Nous preparons la prochaine collection",
+    texte: "Les pieces de la saison partent a la teinture. Le catalogue reste consultable et nous notons vos demandes pour la reouverture.",
+  },
+];
 
 export default function Reglages() {
   const { items, chargement, charger } = useTable<Reglage>(
@@ -105,6 +136,32 @@ export default function Reglages() {
                     <select defaultValue={r.value} onChange={(e) => sauver(r.key, e.target.value)}>
                       {DEVISES.map((d) => <option key={d.code} value={d.code}>{d.code}</option>)}
                     </select>
+                  ) : r.key === "site.etat" ? (
+                    <select defaultValue={r.value} onChange={(e) => sauver(r.key, e.target.value)}>
+                      {ETATS.map((x) => <option key={x.v} value={x.v}>{x.l}</option>)}
+                    </select>
+                  ) : r.key === "site.message" ? (
+                    <>
+                      <textarea defaultValue={r.value} rows={3}
+                                onBlur={(e) => { if (e.target.value !== r.value) sauver(r.key, e.target.value); }} />
+                      <div className="chips" style={{ marginTop: 10 }}>
+                        {MESSAGES.map((m) => (
+                          <button key={m.quoi} className="chip" type="button"
+                                  title={m.texte}
+                                  onClick={async () => {
+                                    await sauver("site.titre", m.titre);
+                                    await sauver("site.message", m.texte);
+                                    charger();
+                                    toast("Message « " + m.quoi + " » repris. Modifiez-le si besoin.");
+                                  }}>
+                            {m.quoi}
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  ) : r.key === "site.reprise" ? (
+                    <input type="date" defaultValue={r.value}
+                           onBlur={(e) => { if (e.target.value !== r.value) sauver(r.key, e.target.value); }} />
                   ) : r.key === "facture.mentions" ? (
                     <textarea defaultValue={r.value}
                               onBlur={(e) => { if (e.target.value !== r.value) sauver(r.key, e.target.value); }} />
