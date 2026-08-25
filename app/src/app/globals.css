@@ -356,6 +356,18 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--surface-3); border: 1px solid var(--line-2); flex: none;
 }
 
+/* Une vignette qu'on peut remplacer d'un clic. Sans ce voile, rien ne
+   le disait : l'infobulle ne se decouvre qu'en s'arretant dessus. */
+.photo-echange { position: relative; display: block; width: 46px; cursor: pointer; }
+.photo-echange__voile {
+  position: absolute; inset: 0; border-radius: 10px;
+  display: grid; place-items: center; color: #fff;
+  background: rgba(28, 20, 14, .58);
+  opacity: 0; transition: opacity .16s ease;
+}
+.photo-echange:hover .photo-echange__voile,
+.photo-echange:focus-within .photo-echange__voile { opacity: 1; }
+
 /* =========================================================
    6. Pastilles & messages
    ========================================================= */

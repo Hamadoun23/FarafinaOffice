@@ -76,6 +76,7 @@ export default function FicheProduit({
   const [depot, setDepot] = useState(false);
   const [planche, setPlanche] = useState<string[]>([]);
   const [choix, setChoix] = useState<"principale" | "planche" | null>(null);
+  const [onglet, setOnglet] = useState<"fiche" | "photos" | "details">("fiche");
   const [tousProduits, setTousProduits] = useState<{ id: string; ref: string; fr_name: string; image_path: string | null }[]>([]);
   const nouveau = !produit.id;
 
@@ -131,9 +132,11 @@ export default function FicheProduit({
   }
 
   async function valider() {
-    if (!f.fr_name?.trim()) return toast("Le nom francais est obligatoire.", "err");
-    if (!f.ref?.trim()) return toast("Choisissez une gamme : la reference en decoule.", "err");
-    if (!f.category_id) return toast("Choisissez une categorie.", "err");
+    /* Les champs obligatoires vivent tous sur le premier onglet : on y
+       ramene l'utilisateur, sinon le message designe un champ invisible. */
+    if (!f.fr_name?.trim()) { setOnglet("fiche"); return toast("Le nom francais est obligatoire.", "err"); }
+    if (!f.ref?.trim()) { setOnglet("fiche"); return toast("Choisissez une gamme : la reference en decoule.", "err"); }
+    if (!f.category_id) { setOnglet("fiche"); return toast("Choisissez une categorie.", "err"); }
 
     setEnvoi(true);
     const valeurs = {
@@ -210,6 +213,22 @@ export default function FicheProduit({
         </>
       }
     >
+      {/* Une fiche produit compte une vingtaine de champs. Les presenter
+          d'un bloc noie l'essentiel : on separe ce qu'on modifie tous les
+          jours, les photos, et le reste. */}
+      <div className="chips" style={{ marginBottom: 18 }}>
+        <button className={`chip ${onglet === "fiche" ? "on" : ""}`} onClick={() => setOnglet("fiche")}>
+          La fiche
+        </button>
+        <button className={`chip ${onglet === "photos" ? "on" : ""}`} onClick={() => setOnglet("photos")}>
+          Photos{planche.length ? ` · ${planche.length + (f.image_path ? 1 : 0)}` : f.image_path ? " · 1" : ""}
+        </button>
+        <button className={`chip ${onglet === "details" ? "on" : ""}`} onClick={() => setOnglet("details")}>
+          Details et promotion
+        </button>
+      </div>
+
+      <div hidden={onglet !== "fiche"}>
       <div className="row">
         <Champ label="Nom (francais)">
           <input value={f.fr_name ?? ""} autoFocus
@@ -264,6 +283,9 @@ export default function FicheProduit({
         </Champ>
       </div>
 
+      </div>
+
+      <div hidden={onglet !== "details"}>
       {/* ---------- promotion ---------- */}
       <div style={{
         border: "1px solid var(--line-2)", borderRadius: "var(--r-m)",
@@ -320,6 +342,46 @@ export default function FicheProduit({
         <Champ label="Description (anglais)">
           <textarea value={f.en_desc ?? ""} onChange={(e) => set("en_desc", e.target.value)} />
         </Champ>
+      </div>
+
+      </div>
+
+      <div hidden={onglet !== "photos"}>
+      <div style={{
+        border: "1px solid var(--line-2)", borderRadius: "var(--r-m)",
+        background: "var(--surface-2)", padding: "14px 16px", marginBottom: 16,
+      }}>
+        <div className="section-t" style={{ marginBottom: 4 }}>Photo principale</div>
+        <p className="sub" style={{ marginBottom: 12 }}>
+          Celle qui represente la reference partout : vignette du catalogue, fiche, panier.
+          Importee dans <span className="mono">assets/{dossier}</span>, comme les photos livrees avec le site.
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+          {f.image_path ? (
+            <img className="thumb" style={{ width: 110, height: 110 }} src={photoProduit(f.image_path)} alt="" />
+          ) : (
+            <span className="thumb" style={{ width: 110, height: 110, display: "grid", placeItems: "center", color: "var(--ink-3)" }}>
+              <Ico n="image" s={26} />
+            </span>
+          )}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <button className="btn btn--sm" onClick={() => setChoix("principale")}>
+              Choisir dans le site
+            </button>
+            <label className={`btn btn--sm ${depot ? "btn--ghost" : ""}`}>
+              {depot ? "Import en cours…" : "Importer une photo"}
+              <input type="file" accept="image/*" hidden disabled={depot}
+                     onChange={(e) => {
+                       const file = e.target.files?.[0];
+                       e.target.value = "";
+                       if (file) importer(file);
+                     }} />
+            </label>
+            {f.image_path && (
+              <button className="btn btn--sm btn--danger" onClick={() => set("image_path", "")}>Retirer</button>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* ---------- planche de motifs : les lots ---------- */}
@@ -398,40 +460,18 @@ export default function FicheProduit({
 
         {planche.length > 0 && f.unit !== "lot" && (
           <p className="sub" style={{ marginTop: 10, color: "var(--warn)" }}>
-            Cette reference porte une planche mais n&apos;est pas vendue « par lot ».
-            Passez « Vendu » sur <strong>Par lot / assortiment</strong> et indiquez la quantite.
+            Cette reference porte une planche mais n&apos;est pas vendue « par lot » —
+            l&apos;acheteur croira choisir un modele.{" "}
+            <button className="btn btn--sm" style={{ marginLeft: 4 }}
+                    onClick={() => { set("unit", "lot"); setOnglet("fiche"); }}>
+              La vendre par lot
+            </button>
           </p>
         )}
       </div>
 
-      <Champ label="Photo" aide={`Importee dans assets/${dossier} — comme les photos livrees avec le site.`}>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-          {f.image_path ? (
-            <img className="thumb" style={{ width: 78, height: 78 }} src={photoProduit(f.image_path)} alt="" />
-          ) : (
-            <span className="thumb" style={{ width: 78, height: 78, display: "grid", placeItems: "center", color: "var(--ink-3)" }}>
-              <Ico n="box" />
-            </span>
-          )}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button className="btn btn--sm" onClick={() => setChoix("principale")}>
-              Choisir dans le site
-            </button>
-            <label className={`btn btn--sm ${depot ? "btn--ghost" : ""}`}>
-              {depot ? "Import en cours…" : "Importer une photo"}
-              <input type="file" accept="image/*" hidden disabled={depot}
-                     onChange={(e) => {
-                       const file = e.target.files?.[0];
-                       e.target.value = "";
-                       if (file) importer(file);
-                     }} />
-            </label>
-            {f.image_path && (
-              <button className="btn btn--sm btn--danger" onClick={() => set("image_path", "")}>Retirer</button>
-            )}
-          </div>
-        </div>
-      </Champ>
+
+      </div>
 
       {choix && (
         <ChoixPhoto

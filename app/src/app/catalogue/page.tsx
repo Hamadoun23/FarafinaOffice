@@ -166,7 +166,7 @@ export default function Catalogue() {
                                  c.includes(p.id) ? c.filter((x) => x !== p.id) : [...c, p.id])} />
                       </td>
                       <td>
-                        <label style={{ cursor: "pointer", display: "block", width: 46 }}
+                        <label className="photo-echange"
                                title="Cliquer pour importer une autre photo">
                           {p.image_path ? (
                             <img className="thumb" src={photoProduit(p.image_path)} alt="" />
@@ -187,6 +187,7 @@ export default function Catalogue() {
                                      charger();
                                    }
                                  }} />
+                          <span className="photo-echange__voile"><Ico n="image" s={16} /></span>
                         </label>
                       </td>
                       <td>

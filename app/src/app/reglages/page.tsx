@@ -24,15 +24,14 @@ const GROUPES: Record<string, { titre: string; aide: string }> = {
   },
   site: {
     titre: "Etat du site",
-    aide: "De quoi prevenir vos clients — conges, inventaire, rupture — sans passer par personne.",
+    aide: "Fermer la boutique le temps d'un conge, d'un inventaire ou d'une nouvelle collection. Ferme, le site n'affiche plus que votre message.",
   },
 };
 
 /** Les etats possibles, du plus discret au plus ferme. */
 const ETATS = [
-  { v: "ouvert",  l: "Ouvert — rien ne change" },
-  { v: "annonce", l: "Bandeau d'information — la boutique reste ouverte" },
-  { v: "ferme",   l: "Ferme — le catalogue reste visible, les commandes sont suspendues" },
+  { v: "ouvert", l: "Ouvert — le site fonctionne normalement" },
+  { v: "ferme",  l: "Ferme — le site ne s'affiche plus, seul votre message reste" },
 ];
 
 /** Trois messages prets a l'emploi. L'administrateur en choisit un puis
