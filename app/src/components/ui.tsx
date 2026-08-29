@@ -186,6 +186,7 @@ const CHEMINS: Record<string, React.ReactNode> = {
   moon: <><path d="M16.6 12.1A6.9 6.9 0 0 1 7.9 3.4a6.9 6.9 0 1 0 8.7 8.7z" /></>,
   image: <><rect x="2.5" y="4" width="15" height="12" rx="2" /><circle cx="7" cy="8.5" r="1.4" /><path d="M3 14l4-4 3.2 3.2L13 9.5l4 4.5" /></>,
   cog: <><circle cx="10" cy="10" r="2.6" /><path d="M10 2.5v2M10 15.5v2M17.5 10h-2M4.5 10h-2M15.3 4.7l-1.4 1.4M6.1 13.9l-1.4 1.4M15.3 15.3l-1.4-1.4M6.1 6.1 4.7 4.7" /></>,
+  chart: <><path d="M3 17V3" /><path d="M3 17h14" /><path d="M6.5 14.5v-5" /><path d="M10.5 14.5v-8" /><path d="M14.5 14.5v-3" /></>,
 };
 
 export function Ico({ n, s = 18 }: { n: keyof typeof CHEMINS | string; s?: number }) {

@@ -7,20 +7,22 @@ import { DEVISES, jour, majChamp, montant, supprimer, useTable } from "@/lib/db"
 import { supabase } from "@/lib/supabase";
 import {
   Facture, LigneFacture as Ligne, STATUTS_FACTURE as STATUTS,
-  numeroFacture, remiseLigne, statutFacture as st, totalFacture, totalLigne,
+  numeroFacture, remiseLigne, soldeFacture, statutFacture as st, totalFacture, totalLigne,
 } from "@/lib/facture";
-type Client = { id: string; name: string; company: string | null; phone: string | null; email: string | null; country: string | null };
+type Client = { id: string; name: string; company: string | null; phone: string | null; email: string | null; country: string | null; reference: string };
 type Produit = { id: string; ref: string; fr_name: string; price: number | null };
 type Reglage = { key: string; value: string };
 
 export default function Factures() {
   const { items, chargement, charger } = useTable<Facture>("invoices", "*");
-  const { items: clients } = useTable<Client>("customers", "id,name,company,phone,email,country", { col: "name", asc: true });
+  const { items: clients } = useTable<Client>("customers", "id,name,company,phone,email,country,reference", { col: "name", asc: true });
   const { items: produits } = useTable<Produit>("products", "id,ref,fr_name,price", { col: "ref", asc: true });
   const { items: reglages } = useTable<Reglage>("settings", "key,value", { col: "position", asc: true });
 
   const [totaux, setTotaux] = useState<Record<string, number>>({});
   const [filtre, setFiltre] = useState("");
+  const [devise, setDevise] = useState("");
+  const [q, setQ] = useState("");
   const [edite, setEdite] = useState<Partial<Facture> | null>(null);
   const [aSupprimer, setASupprimer] = useState<Facture | null>(null);
 
@@ -32,7 +34,7 @@ export default function Factures() {
      toute la liste plutot que de recharger a chaque ligne affichee. */
   useEffect(() => {
     if (!items.length) { setTotaux({}); return; }
-    supabase.from("invoice_items").select("invoice_id,rate,qty,discount").then(({ data }) => {
+    supabase.from("invoice_items").select("invoice_id,rate,qty,discount,discount_type").then(({ data }) => {
       const t: Record<string, number> = {};
       (data ?? []).forEach((l: any) => {
         t[l.invoice_id] = (t[l.invoice_id] ?? 0) + totalLigne(l);
@@ -41,19 +43,41 @@ export default function Factures() {
     });
   }, [items]);
 
-  const vus = filtre ? items.filter((f) => f.status === filtre) : items;
-  const du = items
-    .filter((f) => !["payee", "annulee"].includes(f.status))
-    .reduce((s, f) => s + Math.max(0, (totaux[f.id] ?? 0) - Number(f.paid_amount)), 0);
+  const t = q.trim().toLowerCase();
+  const vus = items.filter((f) => {
+    if (filtre && f.status !== filtre) return false;
+    if (devise && f.currency !== devise) return false;
+    if (!t) return true;
+    return [numero(f), f.bill_to, f.bill_phone, f.bill_email].filter(Boolean)
+      .join(" ").toLowerCase().includes(t);
+  });
+  /* Par devise : additionner des factures en USD et en XOF donnerait un
+     chiffre qui ne veut rien dire, faute de taux de change fiable. On
+     montre donc un solde du par devise plutot qu'un total invente. */
+  const duParDevise: Record<string, number> = {};
+  items.filter((f) => f.status !== "annulee").forEach((f) => {
+    const s = soldeFacture(totaux[f.id] ?? 0, f.paid_amount, f.status);
+    if (s > 0) duParDevise[f.currency] = (duParDevise[f.currency] ?? 0) + s;
+  });
 
   return (
     <Shell>
       <div className="head">
         <div>
           <h1>Factures</h1>
-          <p>{items.length} factures · {montant(du, reg["facture.devise"] || "USD")} en attente de reglement</p>
+          <p>
+            {items.length} factures
+            {Object.keys(duParDevise).length > 0 && (
+              <> · en attente de reglement : {Object.entries(duParDevise)
+                .map(([d, s]) => montant(s, d)).join(" · ")}</>
+            )}
+          </p>
         </div>
         <div className="head__act">
+          <div className="search">
+            <Ico n="search" s={16} />
+            <input placeholder="N°, client, telephone, e-mail…" value={q} onChange={(e) => setQ(e.target.value)} />
+          </div>
           <button className="btn btn--main" onClick={() => setEdite({
             issue_date: new Date().toISOString().slice(0, 10),
             currency: reg["facture.devise"] || "USD",
@@ -72,6 +96,16 @@ export default function Factures() {
           <button key={s.v} className={`chip ${filtre === s.v ? "on" : ""}`}
                   onClick={() => setFiltre(filtre === s.v ? "" : s.v)}>
             {s.l} ({items.filter((f) => f.status === s.v).length})
+          </button>
+        ))}
+      </div>
+
+      <div className="chips" style={{ marginBottom: 14 }}>
+        <button className={`chip ${!devise ? "on" : ""}`} onClick={() => setDevise("")}>Toutes devises</button>
+        {DEVISES.map((d) => (
+          <button key={d.code} className={`chip ${devise === d.code ? "on" : ""}`}
+                  onClick={() => setDevise(devise === d.code ? "" : d.code)}>
+            {d.code} ({items.filter((f) => f.currency === d.code).length})
           </button>
         ))}
       </div>
@@ -96,7 +130,7 @@ export default function Factures() {
               <tbody>
                 {vus.map((f) => {
                   const total = totaux[f.id] ?? 0;
-                  const solde = Math.max(0, total - Number(f.paid_amount));
+                  const solde = soldeFacture(total, f.paid_amount, f.status);
                   return (
                     <tr key={f.id}>
                       <td className="mono">{numero(f)}</td>
@@ -111,9 +145,14 @@ export default function Factures() {
                       <td>
                         <select value={f.status} style={{ padding: "6px 9px", fontSize: ".8rem" }}
                                 onChange={async (e) => {
-                                  if (await majChamp("invoices", f.id, "status", e.target.value)) {
-                                    toast("Statut mis a jour."); charger();
-                                  }
+                                  const v = e.target.value;
+                                  /* Payee => solde nul : on aligne le montant regle sur le
+                                     total plutot que de laisser un solde du fantome. */
+                                  const ok = v === "payee"
+                                    ? await majChamp("invoices", f.id, "paid_amount", total)
+                                        .then(() => majChamp("invoices", f.id, "status", v))
+                                    : await majChamp("invoices", f.id, "status", v);
+                                  if (ok) { toast("Statut mis a jour."); charger(); }
                                 }}>
                           {STATUTS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
                         </select>
@@ -179,17 +218,25 @@ function Editeur({
   const set = (k: keyof Facture, v: unknown) => setF((x) => ({ ...x, [k]: v }));
 
   useEffect(() => {
-    if (!facture.id) { setLignes([{ product_id: null, description: "", rate: 0, qty: 1, discount: 0, position: 0 }]); return; }
+    if (!facture.id) {
+      setLignes([{ product_id: null, description: "", rate: 0, qty: 1, discount: 0, discount_type: "percent", position: 0 }]);
+      return;
+    }
     supabase.from("invoice_items").select("*").eq("invoice_id", facture.id).order("position")
-      .then(({ data }) => setLignes((data as Ligne[]) ?? []));
+      .then(({ data }) => setLignes(((data as Ligne[]) ?? []).map((l) => ({ ...l, discount_type: l.discount_type || "percent" }))));
   }, [facture.id]);
 
   const total = totalFacture(lignes);
-  const solde = Math.round((total - Number(f.paid_amount || 0)) * 100) / 100;
+  const solde = soldeFacture(total, Number(f.paid_amount || 0), f.status || "brouillon");
   const devise = f.currency || "USD";
 
   function majLigne(i: number, patch: Partial<Ligne>) {
     setLignes((l) => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  }
+
+  /** Payee => solde nul : le montant regle suit le total, sans bloquer sa retouche. */
+  function choisirStatut(v: string) {
+    setF((x) => ({ ...x, status: v, paid_amount: v === "payee" ? total : x.paid_amount }));
   }
 
   /** Reprendre un client de la base remplit l'adresse de facturation. */
@@ -205,6 +252,37 @@ function Editeur({
     }));
   }
 
+  /**
+   * Rattache la facture a une fiche client, quitte a la creer : c'est
+   * ainsi que le repertoire clients se remplit tout seul des la premiere
+   * facture, sans passer par l'ecran Clients. On rapproche d'abord sur
+   * l'e-mail puis sur le telephone, pour ne pas doubler une fiche
+   * existante avec une simple faute de casse.
+   */
+  async function assurerClient(): Promise<string | null> {
+    if (f.customer_id) return f.customer_id;
+    const email = f.bill_email?.trim().toLowerCase() || null;
+    const tel = f.bill_phone?.trim() || null;
+    const telNu = tel ? tel.replace(/[^0-9]/g, "") : "";
+
+    const trouve = clients.find((c) =>
+      (email && c.email?.toLowerCase() === email) ||
+      (telNu && c.phone && c.phone.replace(/[^0-9]/g, "") === telNu)
+    );
+    if (trouve) return trouve.id;
+
+    const nom = (f.bill_to || "").trim();
+    if (!nom) return null;
+    const [nomSeul, societe] = nom.includes(" — ") ? nom.split(" — ").map((s) => s.trim()) : [nom, null];
+
+    const { data, error } = await supabase.from("customers").insert({
+      name: nomSeul, company: societe, email, phone: tel,
+      country: f.bill_address?.trim() || null, source: "facture",
+      notes: "Fiche creee automatiquement depuis une facture.",
+    }).select("id").single();
+    return !error && data ? data.id : null;
+  }
+
   function choisirProduit(i: number, id: string) {
     const p = produits.find((x) => x.id === id);
     majLigne(i, p
@@ -216,8 +294,10 @@ function Editeur({
     if (!f.bill_to?.trim()) return toast("Indiquez a qui la facture est adressee.", "err");
     setEnvoi(true);
 
+    const customerId = await assurerClient();
+
     const entete = {
-      customer_id: f.customer_id || null,
+      customer_id: customerId,
       order_id: f.order_id || null,
       bill_to: f.bill_to.trim(),
       bill_phone: f.bill_phone || null,
@@ -252,6 +332,7 @@ function Editeur({
           rate: Number(l.rate) || 0,
           qty: Number(l.qty) || 1,
           discount: Number(l.discount) || 0,
+          discount_type: l.discount_type || "percent",
           position: i,
         }))
       );
@@ -292,7 +373,7 @@ function Editeur({
           <select value={f.customer_id ?? ""} onChange={(e) => choisirClient(e.target.value)}>
             <option value="">— saisie libre —</option>
             {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}{c.company ? ` — ${c.company}` : ""}</option>
+              <option key={c.id} value={c.id}>{c.reference} · {c.name}{c.company ? ` — ${c.company}` : ""}</option>
             ))}
           </select>
         </Champ>
@@ -336,7 +417,7 @@ function Editeur({
               <th>Designation</th>
               <th style={{ width: 108 }}>Prix unit.</th>
               <th style={{ width: 78 }}>Qte</th>
-              <th style={{ width: 92 }}>Remise %</th>
+              <th style={{ width: 128 }}>Remise</th>
               <th style={{ width: 116 }}>Montant</th>
               <th style={{ width: 44 }}></th>
             </tr>
@@ -365,9 +446,18 @@ function Editeur({
                          onChange={(e) => majLigne(i, { qty: Number(e.target.value.replace(",", ".")) || 0 })} />
                 </td>
                 <td>
-                  <input className="num" inputMode="decimal" value={l.discount}
-                         style={{ padding: "6px 8px", fontSize: ".82rem" }}
-                         onChange={(e) => majLigne(i, { discount: Number(e.target.value.replace(",", ".")) || 0 })} />
+                  <div style={{ display: "flex", gap: 4 }}>
+                    <input className="num" inputMode="decimal" value={l.discount}
+                           style={{ padding: "6px 8px", fontSize: ".82rem", flex: 1 }}
+                           onChange={(e) => majLigne(i, { discount: Number(e.target.value.replace(",", ".")) || 0 })} />
+                    <select value={l.discount_type || "percent"}
+                            style={{ padding: "6px 4px", fontSize: ".74rem", width: 46 }}
+                            title="Pourcentage ou montant retire"
+                            onChange={(e) => majLigne(i, { discount_type: e.target.value as Ligne["discount_type"] })}>
+                      <option value="percent">%</option>
+                      <option value="amount">{devise}</option>
+                    </select>
+                  </div>
                 </td>
                 <td className="num">
                   <strong>{montant(totalLigne(l), devise)}</strong>
@@ -389,17 +479,17 @@ function Editeur({
         </table>
       </div>
       <button className="btn btn--sm"
-              onClick={() => setLignes((l) => [...l, { product_id: null, description: "", rate: 0, qty: 1, discount: 0, position: l.length }])}>
+              onClick={() => setLignes((l) => [...l, { product_id: null, description: "", rate: 0, qty: 1, discount: 0, discount_type: "percent", position: l.length }])}>
         <Ico n="plus" s={15} /> Ajouter une ligne
       </button>
 
       <div className="row" style={{ marginTop: 18 }}>
-        <Champ label="Deja regle" aide="Le solde du se calcule tout seul.">
+        <Champ label="Deja regle" aide={f.status === "payee" ? "Facture payee : aligne sur le total." : "Le solde du se calcule tout seul."}>
           <input className="num" inputMode="decimal" value={f.paid_amount ?? 0}
                  onChange={(e) => set("paid_amount", Number(e.target.value.replace(",", ".")) || 0)} />
         </Champ>
         <Champ label="Statut">
-          <select value={f.status ?? "brouillon"} onChange={(e) => set("status", e.target.value)}>
+          <select value={f.status ?? "brouillon"} onChange={(e) => choisirStatut(e.target.value)}>
             {STATUTS.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
           </select>
         </Champ>

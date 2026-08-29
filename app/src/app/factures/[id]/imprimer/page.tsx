@@ -13,9 +13,13 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { montant } from "@/lib/db";
-import { Facture, numeroFacture, remiseLigne, totalFacture, totalLigne } from "@/lib/facture";
+import { Facture, numeroFacture, remiseLigne, soldeFacture, totalFacture, totalLigne, TypeRemise } from "@/lib/facture";
 
-type Ligne = { id: string; description: string; rate: number; qty: number; discount: number; position: number };
+type Ligne = {
+  id: string; description: string; rate: number; qty: number;
+  discount: number; discount_type: TypeRemise; position: number;
+};
+type Client = { reference: string };
 
 const dateFr = (s: string | null | undefined) =>
   s ? new Date(s + (s.length === 10 ? "T00:00:00" : "")).toLocaleDateString("fr-FR", {
@@ -27,6 +31,7 @@ export default function Imprimer() {
   const [f, setF] = useState<Facture | null>(null);
   const [lignes, setLignes] = useState<Ligne[]>([]);
   const [reg, setReg] = useState<Record<string, string>>({});
+  const [client, setClient] = useState<Client | null>(null);
   const [etat, setEtat] = useState<"chargement" | "prete" | "absente">("chargement");
 
   useEffect(() => {
@@ -37,9 +42,14 @@ export default function Imprimer() {
         supabase.from("settings").select("key,value"),
       ]);
       if (!fac.data) { setEtat("absente"); return; }
-      setF(fac.data as Facture);
+      const facture = fac.data as Facture;
+      setF(facture);
       setLignes((its.data as Ligne[]) ?? []);
       setReg(Object.fromEntries(((set.data ?? []) as { key: string; value: string }[]).map((r) => [r.key, r.value])));
+      if (facture.customer_id) {
+        const { data } = await supabase.from("customers").select("reference").eq("id", facture.customer_id).maybeSingle();
+        setClient(data as Client | null);
+      }
       setEtat("prete");
     })();
   }, [id]);
@@ -52,7 +62,7 @@ export default function Imprimer() {
   if (etat === "absente" || !f) return <div className="fac__vide">Cette facture n&apos;existe pas.</div>;
 
   const total = totalFacture(lignes);
-  const solde = Math.round((total - Number(f.paid_amount)) * 100) / 100;
+  const solde = soldeFacture(total, f.paid_amount, f.status);
   const dev = f.currency;
   const numero = numeroFacture(f.number, reg["facture.prefixe"] || "INV");
 
@@ -77,16 +87,22 @@ export default function Imprimer() {
           <div className="fac__maison">
             <h1>{reg["societe.nom"] || "FARAFINATIGNE"}</h1>
             {reg["societe.contact"] && <p>{reg["societe.contact"]}</p>}
-            {reg["societe.registre"] && (
-              <p><b>Business Number</b> <span>{reg["societe.registre"]}</span></p>
+            {(reg["societe.pays"] || reg["societe.bp"]) && (
+              <p>{[reg["societe.pays"], reg["societe.bp"]].filter(Boolean).join(" · ")}</p>
             )}
-            {reg["societe.pays"] && <p>{reg["societe.pays"]}</p>}
-            {reg["societe.bp"] && <p>{reg["societe.bp"]}</p>}
             {reg["societe.adresse"] && <p>{reg["societe.adresse"]}</p>}
-            {reg["societe.tel1"] && <p className="fac__ico">☏ {reg["societe.tel1"]}</p>}
-            {reg["societe.tel2"] && <p className="fac__ico">☏ {reg["societe.tel2"]}</p>}
-            {reg["societe.site"] && <p><a href={`https://${String(reg["societe.site"]).replace(/^https?:\/\//, "")}`}>{reg["societe.site"]}</a></p>}
-            {reg["societe.email"] && <p>{reg["societe.email"]}</p>}
+            {(reg["societe.tel1"] || reg["societe.tel2"]) && (
+              <p className="fac__ico">☏ {[reg["societe.tel1"], reg["societe.tel2"]].filter(Boolean).join(" · ")}</p>
+            )}
+            {(reg["societe.site"] || reg["societe.email"]) && (
+              <p>
+                {reg["societe.site"] && (
+                  <a href={`https://${String(reg["societe.site"]).replace(/^https?:\/\//, "")}`}>{reg["societe.site"]}</a>
+                )}
+                {reg["societe.site"] && reg["societe.email"] && " · "}
+                {reg["societe.email"]}
+              </p>
+            )}
           </div>
 
           <div className="fac__meta">
@@ -100,7 +116,7 @@ export default function Imprimer() {
         {/* ---------- destinataire ---------- */}
         <section className="fac__client">
           <span>BILL TO</span>
-          <h2>{f.bill_to}</h2>
+          <h2>{f.bill_to}{client?.reference && <i className="fac__ref">{client.reference}</i>}</h2>
           {f.bill_phone && <p className="fac__ico">☏ {f.bill_phone}</p>}
           {f.bill_email && <p>{f.bill_email}</p>}
           {f.bill_address && <p>{f.bill_address}</p>}
@@ -126,8 +142,8 @@ export default function Imprimer() {
                   <td className="d">{montant(l.rate, dev)}</td>
                   <td className="d">{Number(l.qty) % 1 === 0 ? Number(l.qty) : Number(l.qty).toFixed(2)}</td>
                   <td className="d">
-                    {Number(l.discount) > 0 ? (
-                      <>−{montant(remise, dev)}<i>{Number(l.discount)}%</i></>
+                    {remise > 0 ? (
+                      <>−{montant(remise, dev)}{l.discount_type !== "amount" && <i>{Number(l.discount)}%</i>}</>
                     ) : ""}
                   </td>
                   <td className="d"><b>{montant(totalLigne(l), dev)}</b></td>
@@ -138,19 +154,28 @@ export default function Imprimer() {
         </table>
 
         {/* ---------- totaux ---------- */}
-        <section className="fac__totaux">
-          <div className="fac__ligne-total">
-            <span>TOTAL</span><b>{montant(total, dev)}</b>
-          </div>
-          {Number(f.paid_amount) > 0 && (
-            <div className="fac__ligne-total">
-              <span>AMOUNT PAID</span><b>−{montant(f.paid_amount, dev)}</b>
-            </div>
-          )}
-          <div className="fac__ligne-total fac__ligne-total--du">
-            <span>BALANCE DUE</span><b>{dev} {montant(solde, dev)}</b>
-          </div>
-        </section>
+        {(() => {
+          /* Payee => solde nul a l'affichage : si le montant regle enregistre
+             a derive du total (correction ulterieure, remise ajoutee apres
+             coup...), on montre ce qui rend les trois lignes coherentes
+             plutot que le chiffre brut de la base. */
+          const paye = f.status === "payee" ? total : Number(f.paid_amount);
+          return (
+            <section className="fac__totaux">
+              <div className="fac__ligne-total">
+                <span>TOTAL</span><b>{montant(total, dev)}</b>
+              </div>
+              {paye > 0 && (
+                <div className="fac__ligne-total">
+                  <span>AMOUNT PAID</span><b>−{montant(paye, dev)}</b>
+                </div>
+              )}
+              <div className="fac__ligne-total fac__ligne-total--du">
+                <span>BALANCE DUE</span><b>{dev} {montant(solde, dev)}</b>
+              </div>
+            </section>
+          );
+        })()}
 
         {/* ---------- pied ---------- */}
         <footer className="fac__pied">

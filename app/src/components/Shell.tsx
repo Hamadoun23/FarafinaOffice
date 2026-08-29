@@ -32,6 +32,7 @@ const GROUPES: { titre: string; liens: { href: string; label: string; ico: strin
       { href: "/commandes", label: "Commandes", ico: "cart" },
       { href: "/devis", label: "Devis", ico: "bill" },
       { href: "/factures", label: "Factures", ico: "bill" },
+      { href: "/rapports", label: "Rapports", ico: "chart" },
       { href: "/relances", label: "Relances", ico: "bell" },
     ],
   },

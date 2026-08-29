@@ -253,6 +253,28 @@ body { transition: background-color .3s ease, color .3s ease; }
 }
 
 /* =========================================================
+   Barres — evolution du chiffre d'affaires (Rapports)
+   Pas de bibliotheque de graphiques pour cinq colonnes : des divs
+   dont la hauteur suit la valeur suffisent, et restent lisibles
+   dans les deux themes sans configuration.
+   ========================================================= */
+.bars {
+  display: flex; align-items: flex-end; gap: 10px; height: 150px;
+  margin-top: 18px; padding: 0 2px;
+}
+.bars__col { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; height: 100%; }
+.bars__stack {
+  width: 100%; max-width: 40px; margin-top: auto; border-radius: 5px 5px 0 0;
+  background: color-mix(in srgb, var(--gold-deep) 26%, transparent);
+  display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden;
+}
+.bars__encaisse { width: 100%; background: var(--g-gold); }
+.bars__col span {
+  margin-top: 8px; font-size: .62rem; color: var(--ink-3); font-weight: 700;
+  white-space: nowrap; text-transform: uppercase; letter-spacing: .04em;
+}
+
+/* =========================================================
    3. Boutons
    ========================================================= */
 .btn {
@@ -485,48 +507,51 @@ tbody tr:last-child td { border-bottom: none; }
 
 .fac {
   max-width: 210mm; margin: 0 auto 40px; background: #fff; color: #2f3542;
-  padding: 16mm 14mm; box-shadow: var(--sh-2); border-radius: 4px;
-  font-size: 10.5pt; line-height: 1.45;
+  padding: 14mm 14mm; box-shadow: var(--sh-2); border-radius: 4px;
+  font-size: 10pt; line-height: 1.4;
 }
 .fac * { color: inherit; }
 
-.fac__tete { display: grid; grid-template-columns: 150px 1fr 190px; gap: 18px; align-items: start; }
+.fac__tete { display: grid; grid-template-columns: 130px 1fr 180px; gap: 18px; align-items: start; }
 .fac__logo img { width: 100%; height: auto; object-fit: contain; }
 .fac__logo-vide {
-  border: 2px solid #2f3542; border-radius: 50%; padding: 26px 10px;
-  text-align: center; font-weight: 800; letter-spacing: .04em; font-size: .8rem;
+  border: 2px solid #2f3542; border-radius: 50%; padding: 22px 8px;
+  text-align: center; font-weight: 800; letter-spacing: .04em; font-size: .76rem;
 }
 .fac__maison h1 {
-  font-size: 15pt; font-weight: 800; letter-spacing: .04em; margin-bottom: 10px; color: #1f242e;
+  font-size: 14.5pt; font-weight: 800; letter-spacing: .04em; margin-bottom: 8px; color: #1f242e;
 }
-.fac__maison p { margin-bottom: 4px; }
+.fac__maison p { margin-bottom: 3px; }
 .fac__maison p b { font-weight: 700; }
 .fac__maison p span { color: #6b7280; }
 .fac__maison a { color: #2563a8; text-decoration: underline; }
 .fac__ico { color: #4b5563; }
 
 .fac__meta { text-align: right; }
-.fac__meta div { margin-bottom: 12px; }
+.fac__meta div { margin-bottom: 9px; }
 .fac__meta span {
   display: block; font-size: 7.6pt; letter-spacing: .12em; text-transform: uppercase;
   color: #6b7280; font-weight: 700; margin-bottom: 2px;
 }
-.fac__meta b { font-weight: 600; font-size: 10.5pt; }
+.fac__meta b { font-weight: 600; font-size: 10pt; }
 
-.fac__client { margin-top: 22px; padding-top: 16px; border-top: 1px solid #e5e7eb; }
+.fac__client { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
 .fac__client span {
   font-size: 7.6pt; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; font-weight: 700;
 }
-.fac__client h2 { font-size: 13pt; font-weight: 700; margin: 6px 0 4px; color: #1f242e; }
+.fac__client h2 { font-size: 12.5pt; font-weight: 700; margin: 6px 0 4px; color: #1f242e; display: flex; align-items: baseline; gap: 8px; }
+/* La reference client, rappelee a cote de son nom : facile a reciter au
+   telephone ou a retrouver dans l'ecran Clients. */
+.fac__ref { font-style: normal; font-weight: 700; font-size: 8pt; letter-spacing: .06em; color: #9aa1ac; }
 
-.fac__lignes { width: 100%; border-collapse: collapse; margin-top: 24px; }
+.fac__lignes { width: 100%; border-collapse: collapse; margin-top: 16px; }
 .fac__lignes th {
   font-size: 7.6pt; letter-spacing: .11em; text-transform: uppercase; color: #6b7280;
-  font-weight: 700; text-align: left; padding: 0 8px 10px; background: none; border: none;
+  font-weight: 700; text-align: left; padding: 0 8px 8px; background: none; border: none;
 }
 .fac__lignes th.d, .fac__lignes td.d { text-align: right; }
 .fac__lignes td {
-  padding: 13px 8px; border-bottom: 1px dotted #cbd0d8; vertical-align: top; background: none;
+  padding: 9px 8px; border-bottom: 1px dotted #cbd0d8; vertical-align: top; background: none;
 }
 .fac__lignes tbody tr:hover { background: none; }
 .fac__lignes td i { display: block; font-style: normal; font-size: 8pt; color: #9aa1ac; margin-top: 2px; }
@@ -535,25 +560,28 @@ tbody tr:last-child td { border-bottom: none; }
 .fac__totaux { margin-top: 4px; margin-left: auto; width: 52%; }
 .fac__ligne-total {
   display: flex; justify-content: space-between; align-items: baseline; gap: 16px;
-  padding: 13px 8px; border-bottom: 1px dotted #cbd0d8;
+  padding: 9px 8px; border-bottom: 1px dotted #cbd0d8;
 }
 .fac__ligne-total span {
   font-size: 7.6pt; letter-spacing: .11em; text-transform: uppercase; color: #6b7280; font-weight: 700;
 }
 .fac__ligne-total b { font-weight: 600; }
-.fac__ligne-total--du { border-bottom: none; border-top: 1px solid #e5e7eb; padding-top: 16px; }
-.fac__ligne-total--du b { font-size: 15pt; font-weight: 700; color: #1f242e; }
+.fac__ligne-total--du { border-bottom: none; border-top: 1px solid #e5e7eb; padding-top: 12px; }
+.fac__ligne-total--du b { font-size: 14pt; font-weight: 700; color: #1f242e; }
 
-.fac__pied { margin-top: 46px; color: #6b7280; font-size: 9.5pt; }
+.fac__pied { margin-top: 28px; color: #6b7280; font-size: 9pt; }
 .fac__note { margin-bottom: 8px; color: #2f3542; white-space: pre-wrap; }
-.fac__mentions { margin-top: 8px; font-size: 8.5pt; }
+.fac__mentions { margin-top: 8px; font-size: 8pt; }
 
 @media print {
-  @page { size: A4; margin: 12mm; }
+  /* Marge de page nulle : Chrome n'a alors plus de place pour son propre
+     bandeau (adresse, date, numero de page) et le laisse de cote. Les
+     marges visuelles sont recreees par le padding de .fac ci-dessous. */
+  @page { size: A4; margin: 0; }
   body { background: #fff !important; }
   .fac__barre { display: none !important; }
   .fac {
-    max-width: none; margin: 0; padding: 0; box-shadow: none; border-radius: 0;
+    max-width: none; margin: 0; padding: 14mm 16mm; box-shadow: none; border-radius: 0;
     -webkit-print-color-adjust: exact; print-color-adjust: exact;
   }
   .fac__lignes tr, .fac__ligne-total { break-inside: avoid; }

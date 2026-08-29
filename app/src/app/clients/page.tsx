@@ -8,10 +8,10 @@ import { enregistrer, jour, supprimer, useTable } from "@/lib/db";
 type Client = {
   id: string; name: string; company: string | null; email: string | null;
   phone: string | null; country: string | null; lang: string; source: string;
-  notes: string; created_at: string;
+  notes: string; reference: string; created_at: string;
 };
 type Prospect = {
-  id: string; name: string; email: string; company: string | null;
+  id: string; name: string; email: string | null; phone: string | null; company: string | null;
   country: string | null; lang: string; created_at: string;
 };
 
@@ -19,9 +19,12 @@ const SOURCES = [
   { v: "contact", l: "Formulaire de contact" },
   { v: "catalogue", l: "Telechargement du catalogue" },
   { v: "devis", l: "Demande de devis" },
+  { v: "facture", l: "Creee depuis une facture" },
   { v: "salon", l: "Salon / rencontre" },
   { v: "direct", l: "Saisi par l'equipe" },
+  { v: "site", l: "Commande depuis le site" },
 ];
+const libelleSource = (v: string) => SOURCES.find((s) => s.v === v)?.l || v;
 
 const VIDE = (): Partial<Client> => ({
   name: "", company: "", email: "", phone: "", country: "", lang: "fr",
@@ -39,14 +42,14 @@ export default function Clients() {
 
   const t = q.trim().toLowerCase();
   const vusCli = cli.items.filter((c) =>
-    !t || [c.name, c.company, c.email, c.country].join(" ").toLowerCase().includes(t));
+    !t || [c.reference, c.name, c.company, c.email, c.phone, c.country].join(" ").toLowerCase().includes(t));
   const vusPro = pro.items.filter((p) =>
-    !t || [p.name, p.company, p.email, p.country].join(" ").toLowerCase().includes(t));
+    !t || [p.name, p.company, p.email, p.phone, p.country].join(" ").toLowerCase().includes(t));
 
   /** Un prospect du catalogue PDF devient une fiche client. */
   async function convertir(p: Prospect) {
     const ok = await enregistrer("customers", {
-      name: p.name, company: p.company, email: p.email,
+      name: p.name, company: p.company, email: p.email, phone: p.phone,
       country: p.country, lang: p.lang, source: "catalogue",
       notes: "Issu du telechargement du catalogue le " + jour(p.created_at),
     });
@@ -90,11 +93,12 @@ export default function Clients() {
             ) : (
               <table>
                 <thead>
-                  <tr><th>Nom</th><th>Societe</th><th>Contact</th><th>Pays</th><th>Origine</th><th style={{ width: 90 }}></th></tr>
+                  <tr><th style={{ width: 88 }}>Reference</th><th>Nom</th><th>Societe</th><th>Contact</th><th>Pays</th><th>Origine</th><th style={{ width: 90 }}></th></tr>
                 </thead>
                 <tbody>
                   {vusCli.map((c) => (
                     <tr key={c.id}>
+                      <td className="mono">{c.reference}</td>
                       <td>
                         <strong>{c.name}</strong>
                         <div className="sub">Depuis le {jour(c.created_at)}</div>
@@ -105,7 +109,7 @@ export default function Clients() {
                         {c.phone && <div className="sub">{c.phone}</div>}
                       </td>
                       <td>{c.country || "—"}</td>
-                      <td><span className="tag tag--mute">{c.source}</span></td>
+                      <td><span className="tag tag--mute">{libelleSource(c.source)}</span></td>
                       <td>
                         <div className="acts">
                           <button className="btn btn--ghost btn--icon" title="Modifier"
@@ -128,14 +132,17 @@ export default function Clients() {
             ) : (
               <table>
                 <thead>
-                  <tr><th>Nom</th><th>Societe</th><th>E-mail</th><th>Pays</th><th>Recu le</th><th style={{ width: 150 }}></th></tr>
+                  <tr><th>Nom</th><th>Societe</th><th>Contact</th><th>Pays</th><th>Recu le</th><th style={{ width: 150 }}></th></tr>
                 </thead>
                 <tbody>
                   {vusPro.map((p) => (
                     <tr key={p.id}>
                       <td><strong>{p.name}</strong></td>
                       <td>{p.company || "—"}</td>
-                      <td><a href={`mailto:${p.email}`} style={{ color: "var(--gold-deep)", fontWeight: 600 }}>{p.email}</a></td>
+                      <td>
+                        {p.email ? <a href={`mailto:${p.email}`} style={{ color: "var(--gold-deep)", fontWeight: 600 }}>{p.email}</a> : "—"}
+                        {p.phone && <div className="sub">{p.phone}</div>}
+                      </td>
                       <td>{p.country || "—"}</td>
                       <td className="sub">{jour(p.created_at)}</td>
                       <td>

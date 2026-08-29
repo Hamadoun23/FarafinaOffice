@@ -11,9 +11,11 @@ export type Facture = {
   paid_amount: number; note: string; created_at: string;
 };
 
+export type TypeRemise = "percent" | "amount";
+
 export type LigneFacture = {
   id?: string; product_id: string | null; description: string;
-  rate: number; qty: number; discount: number; position: number;
+  rate: number; qty: number; discount: number; discount_type: TypeRemise; position: number;
 };
 
 export const STATUTS_FACTURE = [
@@ -26,16 +28,38 @@ export const STATUTS_FACTURE = [
 
 export const statutFacture = (v: string) => STATUTS_FACTURE.find((s) => s.v === v);
 
+type LigneChiffree = { rate: number; qty: number; discount: number; discount_type?: TypeRemise };
+
+/**
+ * Remise en valeur, telle qu'elle s'affiche dans la colonne DISCOUNT.
+ * En pourcentage (le cas historique) elle se calcule sur le brut ; en
+ * montant, la saisie de l'admin est la valeur elle-meme — plafonnee au
+ * brut de la ligne, une remise ne peut pas rendre un montant negatif.
+ */
+export function remiseLigne(l: LigneChiffree): number {
+  const brut = Number(l.rate) * Number(l.qty);
+  if (l.discount_type === "amount") {
+    return Math.round(Math.min(Math.max(0, Number(l.discount || 0)), brut) * 100) / 100;
+  }
+  return Math.round(brut * Number(l.discount || 0) / 100 * 100) / 100;
+}
+
 /** Montant d'une ligne, remise deduite. */
-export const totalLigne = (l: { rate: number; qty: number; discount: number }) =>
-  Math.round(Number(l.rate) * Number(l.qty) * (1 - Number(l.discount || 0) / 100) * 100) / 100;
+export const totalLigne = (l: LigneChiffree) =>
+  Math.round((Number(l.rate) * Number(l.qty) - remiseLigne(l)) * 100) / 100;
 
-/** Remise en valeur, telle qu'elle s'affiche dans la colonne DISCOUNT. */
-export const remiseLigne = (l: { rate: number; qty: number; discount: number }) =>
-  Math.round(Number(l.rate) * Number(l.qty) * Number(l.discount || 0) / 100 * 100) / 100;
-
-export const totalFacture = (lignes: { rate: number; qty: number; discount: number }[]) =>
+export const totalFacture = (lignes: LigneChiffree[]) =>
   Math.round(lignes.reduce((s, l) => s + totalLigne(l), 0) * 100) / 100;
+
+/**
+ * Solde du : le total moins ce qui est deja regle, jamais negatif.
+ * Une facture au statut « payee » est a solde nul par definition, meme
+ * si le montant regle saisi n'a pas ete corrige au centime pres.
+ */
+export function soldeFacture(total: number, paidAmount: number, statut: string): number {
+  if (statut === "payee") return 0;
+  return Math.max(0, Math.round((total - Number(paidAmount || 0)) * 100) / 100);
+}
 
 /** Numero lisible : le prefixe des reglages, puis quatre chiffres. */
 export const numeroFacture = (n: number, prefixe = "INV") =>
