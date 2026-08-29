@@ -187,6 +187,8 @@ export default function Rapports() {
 
       {factures.length === 0 ? (
         <div className="card"><Vide titre="Aucune facture" texte="Les rapports se remplissent des la premiere facture etablie." /></div>
+      ) : !devise ? (
+        <div className="card"><Chargement /></div>
       ) : (
         <>
           {/* ---------- devise ---------- */}

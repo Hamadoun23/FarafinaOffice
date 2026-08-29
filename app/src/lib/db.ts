@@ -228,13 +228,18 @@ export const DEVISES = [
 ];
 
 export function montant(n: number | null | undefined, devise = "USD") {
+  /* Une devise vide (etat encore incertain le temps d'un rendu) ferait
+     planter Intl.NumberFormat, qui n'accepte aucun code invalide : le
+     parametre par defaut ci-dessus ne joue que sur `undefined`, pas sur
+     une chaine vide, d'ou ce filet en plus. */
+  const d = devise || "USD";
   const v = Number(n ?? 0);
-  if (devise === "XOF") return Math.round(v).toLocaleString("fr-FR") + " FCFA";
+  if (d === "XOF") return Math.round(v).toLocaleString("fr-FR") + " FCFA";
   /* Chaque devise s'ecrit dans sa langue : « $2,157.00 » pour un client
      a l'export, « 2 157,00 EUR » pour un europeen. */
-  const langue = devise === "USD" ? "en-US" : "fr-FR";
+  const langue = d === "USD" ? "en-US" : "fr-FR";
   return v.toLocaleString(langue, {
-    style: "currency", currency: devise,
+    style: "currency", currency: d,
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
 }
