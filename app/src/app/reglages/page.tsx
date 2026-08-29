@@ -22,6 +22,10 @@ const GROUPES: Record<string, { titre: string; aide: string }> = {
     titre: "Facturation",
     aide: "Numerotation, devise et mentions de bas de page.",
   },
+  taux: {
+    titre: "Taux de change",
+    aide: "Sert au chiffre d'affaires cumule des Rapports. 1 EUR = 655,957 FCFA (parite fixe, non modifiable) ; le dollar flotte, mettez son taux a jour de temps en temps.",
+  },
   site: {
     titre: "Etat du site",
     aide: "Fermer la boutique le temps d'un conge, d'un inventaire ou d'une nouvelle collection. Ferme, le site n'affiche plus que votre message.",
@@ -166,7 +170,7 @@ export default function Reglages() {
                               onBlur={(e) => { if (e.target.value !== r.value) sauver(r.key, e.target.value); }} />
                   ) : (
                     <input defaultValue={r.value}
-                           inputMode={r.key === "facture.echeance" ? "numeric" : undefined}
+                           inputMode={r.key === "facture.echeance" || r.key === "taux.usd_xof" ? "numeric" : undefined}
                            onBlur={(e) => { if (e.target.value !== r.value) sauver(r.key, e.target.value); }} />
                   )}
                 </div>

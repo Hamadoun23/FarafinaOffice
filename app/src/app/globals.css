@@ -143,8 +143,8 @@ body { transition: background-color .3s ease, color .3s ease; }
 }
 .side__brand { padding: 0 18px 18px; display: flex; align-items: center; gap: 11px; }
 .side__mark {
-  width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
-  background: var(--g-gold); box-shadow: 0 6px 16px -6px rgba(192,127,57,.7); flex: none;
+  width: 40px; height: 40px; border-radius: 12px; flex: none; object-fit: cover;
+  box-shadow: 0 6px 16px -6px rgba(28,13,11,.55), 0 0 0 1px rgba(219,165,78,.35);
 }
 .side__brand b {
   font-family: Anton, "Arial Narrow", sans-serif; font-weight: 400;
@@ -226,6 +226,7 @@ body { transition: background-color .3s ease, color .3s ease; }
 .grid--2 { grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); }
 
 .stat {
+  container-type: inline-size;
   position: relative; overflow: hidden; padding: 18px;
   background: var(--surface); border: 1px solid var(--line-2);
   border-radius: var(--r-l); box-shadow: var(--sh-1);
@@ -235,9 +236,25 @@ body { transition: background-color .3s ease, color .3s ease; }
 .stat::after {
   content: ""; position: absolute; inset: 0 0 auto 0; height: 3px; background: var(--g-gold);
 }
-.stat:hover { transform: translateY(-2px); box-shadow: var(--sh-2); }
-.stat b { font-size: 1.85rem; font-weight: 800; display: block; line-height: 1.15; letter-spacing: -.03em; }
+.stat:hover { transform: translateY(-3px); box-shadow: var(--sh-2); }
+/* Un montant en FCFA compte deux a trois fois plus de caracteres qu'un
+   prix en dollars ("637 425 FCFA" contre "$2,157") : une taille fixe
+   debordait de la carte. La taille suit desormais la largeur reelle de
+   la carte plutot que celle de l'ecran. */
+.stat b {
+  font-size: clamp(1.05rem, 9.5cqw, 1.8rem); font-weight: 800; display: block;
+  line-height: 1.18; letter-spacing: -.02em; overflow-wrap: break-word;
+}
 .stat span { font-size: .68rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-3); font-weight: 800; }
+
+/* La carte vedette des Rapports (cumul FCFA) : meme grille, un accent
+   plus marque pour la distinguer du detail par devise en dessous. */
+.stat--lg {
+  background: var(--g-warm); border-color: rgba(169,104,47,.28);
+}
+.stat--lg::after { height: 4px; }
+.stat--lg b { font-size: clamp(1.2rem, 10.5cqw, 2.05rem); color: var(--gold-deep); }
+.kpi-lead { border-color: rgba(169,104,47,.22); }
 
 .hero {
   background: var(--g-warm); border: 1px solid var(--line-2);
@@ -281,25 +298,29 @@ body { transition: background-color .3s ease, color .3s ease; }
   display: inline-flex; align-items: center; justify-content: center; gap: 7px;
   padding: 10px 16px; border-radius: 10px; font-size: .81rem; font-weight: 700;
   background: var(--surface); color: var(--ink); border: 1px solid var(--line);
-  transition: background .18s, box-shadow .18s, transform .12s, border-color .18s;
+  transition: background .18s, box-shadow .18s, transform .14s, border-color .18s;
   white-space: nowrap;
 }
-.btn:hover { background: var(--surface-2); }
-.btn:active { transform: translateY(1px); }
+.btn:hover { background: var(--surface-2); border-color: var(--gold); transform: translateY(-1px); box-shadow: var(--sh-1); }
+.btn:active { transform: translateY(1px); box-shadow: none; }
 .btn--main {
   background: var(--g-gold); color: #fff; border-color: transparent;
   box-shadow: 0 8px 18px -10px rgba(169,104,47,.95);
 }
-.btn--main:hover { background: linear-gradient(135deg,#e2b05e 0%,#c7883c 55%,#b06f31 100%); }
+.btn--main:hover {
+  background: linear-gradient(135deg,#e2b05e 0%,#c7883c 55%,#b06f31 100%);
+  border-color: transparent; transform: translateY(-2px);
+  box-shadow: 0 14px 24px -12px rgba(169,104,47,1);
+}
 .btn--dark { background: linear-gradient(135deg,#4a2a22,#2b1416); color: #fff; border-color: transparent; }
-.btn--dark:hover { background: linear-gradient(135deg,#5c362b,#3a1d1c); }
+.btn--dark:hover { background: linear-gradient(135deg,#5c362b,#3a1d1c); border-color: transparent; }
 .btn--ghost { background: transparent; border-color: transparent; color: var(--ink-2); }
-.btn--ghost:hover { background: rgba(52,23,26,.06); color: var(--ink); }
+.btn--ghost:hover { background: rgba(52,23,26,.06); color: var(--ink); border-color: transparent; transform: none; box-shadow: none; }
 .btn--danger { color: var(--err); border-color: rgba(163,58,30,.28); }
-.btn--danger:hover { background: var(--err-bg); }
+.btn--danger:hover { background: var(--err-bg); border-color: rgba(163,58,30,.4); }
 .btn--sm { padding: 6px 11px; font-size: .75rem; border-radius: 8px; }
 .btn--icon { padding: 0; width: 32px; height: 32px; border-radius: 9px; }
-.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 
 /* =========================================================
    4. Champs
@@ -349,10 +370,13 @@ select {
 .chip {
   padding: 6px 13px; border-radius: 999px; font-size: .76rem; font-weight: 700;
   border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
-  transition: background .16s, color .16s, border-color .16s;
+  transition: background .16s, color .16s, border-color .16s, transform .16s;
 }
-.chip:hover { border-color: var(--gold); color: var(--ink); }
-.chip.on { background: var(--g-gold); color: #fff; border-color: transparent; box-shadow: 0 6px 14px -8px rgba(169,104,47,.9); }
+.chip:hover { border-color: var(--gold); color: var(--ink); background: var(--surface-2); }
+.chip.on {
+  background: var(--g-gold); color: #fff; border-color: transparent;
+  box-shadow: 0 6px 14px -8px rgba(169,104,47,.9); transform: translateY(-1px);
+}
 
 /* =========================================================
    5. Tableaux

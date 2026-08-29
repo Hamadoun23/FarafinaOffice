@@ -112,14 +112,8 @@ export default function Shell({ children }: { children: React.ReactNode }) {
 
       <aside className={`side ${ouvert ? "open" : ""}`}>
         <div className="side__brand">
-          <span className="side__mark">
-            <svg viewBox="0 0 120 70" width="26" height="16" fill="none" aria-hidden>
-              <g stroke="#fff" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 26 L28 14 L44 26 L60 14 L76 26 L92 14 L106 24" />
-                <path d="M12 46 L28 58 L44 46 L60 58 L76 46 L92 58 L106 48" />
-              </g>
-            </svg>
-          </span>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="side__mark" src="/marque/logo.svg" alt="" width={40} height={40} />
           <div>
             <b>FARAFINAOFFICE</b>
             <span>Gestion</span>

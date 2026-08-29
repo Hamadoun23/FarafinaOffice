@@ -8,10 +8,12 @@
  * cote client a partir des factures et de leurs lignes : le volume reste
  * modeste (quelques centaines de factures), inutile d'ajouter une vue SQL.
  *
- * Une regle guide tout l'ecran : ne jamais additionner deux devises. Un
- * dollar et un franc CFA ne s'ajoutent pas sans un taux de change, que
- * l'application n'a aucun moyen de connaitre avec certitude. On choisit
- * donc une devise a la fois, et les chiffres qu'elle montre sont honnetes.
+ * Le detail par periode et par client reste dans SA devise d'origine —
+ * mieux vaut montrer un dollar comme un dollar que de le deguiser en
+ * franc CFA a chaque ligne. Seul le total cumule tout en haut convertit,
+ * avec un taux visible et modifiable (Reglages > Taux de change) : ainsi
+ * l'admin sait toujours d'ou vient le chiffre, jamais une conversion
+ * silencieuse.
  */
 
 import { useEffect, useMemo, useState } from "react";
@@ -19,7 +21,7 @@ import Shell from "@/components/Shell";
 import { Ico, Chargement, Vide } from "@/components/ui";
 import { DEVISES, jour, montant, useTable } from "@/lib/db";
 import { supabase } from "@/lib/supabase";
-import { Facture, numeroFacture, soldeFacture, statutFacture as st, totalLigne } from "@/lib/facture";
+import { Facture, numeroFacture, soldeFacture, statutFacture as st, totalLigne, versXOF } from "@/lib/facture";
 
 type Client = { id: string; name: string; company: string | null; reference: string };
 type Reglage = { key: string; value: string };
@@ -55,6 +57,7 @@ export default function Rapports() {
 
   const reg = useMemo(() => Object.fromEntries(reglages.map((r) => [r.key, r.value])), [reglages]);
   const prefixe = reg["facture.prefixe"] || "INV";
+  const tauxUsdXof = Number(reg["taux.usd_xof"] || 0);
   const clientDe = useMemo(() => Object.fromEntries(clients.map((c) => [c.id, c])), [clients]);
 
   useEffect(() => {
@@ -101,6 +104,23 @@ export default function Rapports() {
     });
     return { facture, encaisse, duReste, nb: facturees.length, panier: facturees.length ? facture / facturees.length : 0 };
   }, [facturees, totaux]);
+
+  /* Le cumul, toutes devises confondues, en FCFA — la demande explicite
+     de la maison. Une facture USD sans taux renseigne est ecartee plutot
+     que comptee pour zero : mieux vaut un total incomplet et signale
+     qu'un chiffre faux. */
+  const consolide = useMemo(() => {
+    let facture = 0, encaisse = 0, duReste = 0, nb = 0, ignorees = 0;
+    factures.filter((f) => f.status !== "brouillon" && f.status !== "annulee").forEach((f) => {
+      const total = totaux[f.id] ?? 0;
+      const solde = soldeFacture(total, f.paid_amount, f.status);
+      const totalXOF = versXOF(total, f.currency, tauxUsdXof);
+      if (totalXOF === null) { ignorees += 1; return; }
+      const soldeXOF = versXOF(solde, f.currency, tauxUsdXof) ?? 0;
+      facture += totalXOF; duReste += soldeXOF; encaisse += totalXOF - soldeXOF; nb += 1;
+    });
+    return { facture, encaisse, duReste, nb, ignorees };
+  }, [factures, totaux, tauxUsdXof]);
 
   const periodes = useMemo(() => {
     const parCle: Record<string, { facture: number; encaisse: number; nb: number }> = {};
@@ -185,6 +205,26 @@ export default function Rapports() {
         )}
       </div>
 
+      {/* ---------- cumul toutes devises, en FCFA ---------- */}
+      {factures.length > 0 && (
+        <div className="card card--pad kpi-lead" style={{ marginBottom: 16 }}>
+          <div className="section-t" style={{ marginTop: 0 }}>Chiffre d&apos;affaires cumule — toutes devises, en FCFA</div>
+          <div className="grid grid--4">
+            <div className="stat stat--lg"><b>{montant(consolide.facture, "XOF")}</b><span>Facture</span></div>
+            <div className="stat"><b>{montant(consolide.encaisse, "XOF")}</b><span>Encaisse</span></div>
+            <div className="stat"><b>{montant(consolide.duReste, "XOF")}</b><span>Reste du</span></div>
+            <div className="stat"><b>{consolide.nb}</b><span>Factures cumulees</span></div>
+          </div>
+          <p className="sub" style={{ marginTop: 12 }}>
+            1 EUR = {montant(655.957, "XOF")} · 1 USD = {tauxUsdXof > 0 ? montant(tauxUsdXof, "XOF") : "taux non renseigne"}
+            {" — "}<a href="/reglages" style={{ color: "var(--gold-deep)", fontWeight: 700 }}>modifier le taux USD</a>
+            {consolide.ignorees > 0 && (
+              <> · {consolide.ignorees} facture{consolide.ignorees > 1 ? "s" : ""} en USD ecartee{consolide.ignorees > 1 ? "s" : ""} du cumul, faute de taux renseigne.</>
+            )}
+          </p>
+        </div>
+      )}
+
       {factures.length === 0 ? (
         <div className="card"><Vide titre="Aucune facture" texte="Les rapports se remplissent des la premiere facture etablie." /></div>
       ) : !devise ? (
@@ -192,6 +232,7 @@ export default function Rapports() {
       ) : (
         <>
           {/* ---------- devise ---------- */}
+          <div className="section-t" style={{ marginBottom: 8 }}>Detail par devise — sans conversion</div>
           <div className="chips" style={{ marginBottom: 16 }}>
             {devisesUtilisees.map((d) => (
               <button key={d.code} className={`chip ${devise === d.code ? "on" : ""}`} onClick={() => setDevise(d.code)}>

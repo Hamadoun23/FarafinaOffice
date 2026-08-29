@@ -64,3 +64,21 @@ export function soldeFacture(total: number, paidAmount: number, statut: string):
 /** Numero lisible : le prefixe des reglages, puis quatre chiffres. */
 export const numeroFacture = (n: number, prefixe = "INV") =>
   prefixe + String(n).padStart(4, "0");
+
+/**
+ * Conversion en FCFA, pour le chiffre d'affaires cumule des Rapports.
+ *
+ * Le franc CFA ouest-africain est arrime a l'euro par traite : 1 EUR =
+ * 655,957 XOF, un taux fixe depuis 1999, pas une estimation. Le dollar
+ * flotte : son taux vient des Reglages (`taux.usd_xof`), a mettre a jour
+ * par l'equipe. Sans ce taux renseigne, on n'invente rien — la conversion
+ * de cette devise est simplement ignoree par l'appelant.
+ */
+export const EUR_VERS_XOF = 655.957;
+
+export function versXOF(montant: number, devise: string, tauxUsdXof: number): number | null {
+  if (devise === "XOF") return montant;
+  if (devise === "EUR") return Math.round(montant * EUR_VERS_XOF);
+  if (devise === "USD") return tauxUsdXof > 0 ? Math.round(montant * tauxUsdXof) : null;
+  return null;
+}
