@@ -628,6 +628,34 @@ tbody tr:last-child td { border-bottom: none; }
   .fac__lignes tr, .fac__ligne-total { break-inside: avoid; }
 }
 
+/* A l'ecran, sur un telephone : le gabarit ci-dessus vise le papier A4
+   (colonnes fixes en px, marges en mm) et deborde sur un ecran etroit —
+   c'est la meme page que reçoit le client, sur WhatsApp ou par mail, elle
+   doit tenir sans defilement horizontal. */
+@media screen and (max-width: 640px) {
+  .fac__barre { padding: 0 12px; }
+  .fac { padding: 20px 16px; font-size: 9pt; }
+
+  .fac__tete {
+    grid-template-columns: 64px 1fr; grid-template-areas: "logo maison" "meta meta";
+    gap: 10px 14px;
+  }
+  .fac__logo { grid-area: logo; }
+  .fac__logo-vide { padding: 8px 3px; font-size: .5rem; }
+  .fac__maison { grid-area: maison; }
+  .fac__maison h1 { font-size: 12.5pt; }
+  .fac__meta {
+    grid-area: meta; text-align: left; display: grid;
+    grid-template-columns: repeat(2, 1fr); gap: 8px 14px;
+    margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb;
+  }
+  .fac__meta div { margin-bottom: 0; }
+
+  .fac__lignes { font-size: 8pt; }
+  .fac__lignes th, .fac__lignes td { padding: 7px 4px; }
+  .fac__totaux { width: 100%; }
+}
+
 /* =========================================================
    10. Adaptatif
    ========================================================= */
