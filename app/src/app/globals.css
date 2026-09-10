@@ -527,7 +527,12 @@ tbody tr:last-child td { border-bottom: none; }
   max-width: 210mm; margin: 18px auto 10px; display: flex;
   justify-content: space-between; gap: 12px; padding: 0 12px; flex-wrap: wrap;
 }
-.fac__actions { display: flex; gap: 10px; flex-wrap: wrap; }
+.fac__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.fac__envoi-avis {
+  font-size: .74rem; font-weight: 700; color: var(--gold-deep);
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: 999px;
+  padding: 6px 12px;
+}
 .fac__vide { display: grid; place-items: center; min-height: 60vh; color: var(--ink-3); }
 
 .fac__envoi { position: relative; }
