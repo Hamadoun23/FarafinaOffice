@@ -525,9 +525,25 @@ tbody tr:last-child td { border-bottom: none; }
    ========================================================= */
 .fac__barre {
   max-width: 210mm; margin: 18px auto 10px; display: flex;
-  justify-content: space-between; gap: 12px; padding: 0 12px;
+  justify-content: space-between; gap: 12px; padding: 0 12px; flex-wrap: wrap;
 }
+.fac__actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .fac__vide { display: grid; place-items: center; min-height: 60vh; color: var(--ink-3); }
+
+.fac__envoi { position: relative; }
+.fac__envoi-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 20; min-width: 200px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+  box-shadow: var(--sh-2); padding: 6px; display: flex; flex-direction: column; gap: 2px;
+}
+.fac__envoi-opt {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 9px 10px; border-radius: 8px; font-size: .8rem; font-weight: 600;
+  color: var(--ink); background: transparent; text-align: left; white-space: nowrap;
+}
+.fac__envoi-opt:hover:not(:disabled) { background: var(--surface-2); }
+.fac__envoi-opt:disabled { opacity: .45; cursor: not-allowed; }
+.fac__envoi-opt i { font-style: normal; font-size: .66rem; color: var(--ink-3); font-weight: 500; }
 
 .fac {
   max-width: 210mm; margin: 0 auto 40px; background: #fff; color: #2f3542;

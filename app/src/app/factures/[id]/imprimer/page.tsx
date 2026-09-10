@@ -9,7 +9,7 @@
  * sur le nom du fichier.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { montant } from "@/lib/db";
@@ -33,6 +33,8 @@ export default function Imprimer() {
   const [reg, setReg] = useState<Record<string, string>>({});
   const [client, setClient] = useState<Client | null>(null);
   const [etat, setEtat] = useState<"chargement" | "prete" | "absente">("chargement");
+  const [menuEnvoi, setMenuEnvoi] = useState(false);
+  const envoiRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
@@ -58,6 +60,15 @@ export default function Imprimer() {
     if (f) document.title = `${numeroFacture(f.number, reg["facture.prefixe"] || "INV")} — ${f.bill_to}`;
   }, [f, reg]);
 
+  useEffect(() => {
+    if (!menuEnvoi) return;
+    const surClicExterne = (e: MouseEvent) => {
+      if (envoiRef.current && !envoiRef.current.contains(e.target as Node)) setMenuEnvoi(false);
+    };
+    document.addEventListener("mousedown", surClicExterne);
+    return () => document.removeEventListener("mousedown", surClicExterne);
+  }, [menuEnvoi]);
+
   if (etat === "chargement") return <div className="fac__vide">Chargement…</div>;
   if (etat === "absente" || !f) return <div className="fac__vide">Cette facture n&apos;existe pas.</div>;
 
@@ -65,14 +76,50 @@ export default function Imprimer() {
   const solde = soldeFacture(total, f.paid_amount, f.status);
   const dev = f.currency;
   const numero = numeroFacture(f.number, reg["facture.prefixe"] || "INV");
+  const nomSociete = reg["societe.nom"] || "FARAFINATIGNE";
+  const messageEnvoi =
+    `Bonjour ${f.bill_to},\n\nVoici votre facture ${numero} d'un montant de ${dev} ${montant(total, dev)}` +
+    `${solde > 0 ? ` (solde du : ${dev} ${montant(solde, dev)})` : ""}.\n` +
+    `${typeof window !== "undefined" ? window.location.href : ""}\n\nMerci de votre confiance.\n${nomSociete}`;
+
+  const envoyerParEmail = () => {
+    if (!f.bill_email) return;
+    const sujet = `Facture ${numero} — ${nomSociete}`;
+    window.location.href = `mailto:${f.bill_email}?subject=${encodeURIComponent(sujet)}&body=${encodeURIComponent(messageEnvoi)}`;
+    setMenuEnvoi(false);
+  };
+
+  const envoyerParWhatsapp = () => {
+    const tel = (f.bill_phone || "").replace(/[^\d]/g, "");
+    if (!tel) return;
+    window.open(`https://wa.me/${tel}?text=${encodeURIComponent(messageEnvoi)}`, "_blank", "noopener,noreferrer");
+    setMenuEnvoi(false);
+  };
 
   return (
     <>
       <div className="fac__barre">
         <a className="btn" href="/factures">← Retour aux factures</a>
-        <button className="btn btn--main" onClick={() => window.print()}>
-          Imprimer / enregistrer en PDF
-        </button>
+        <div className="fac__actions">
+          <div className="fac__envoi" ref={envoiRef}>
+            <button className="btn" onClick={() => setMenuEnvoi((v) => !v)}>
+              Envoyer ▾
+            </button>
+            {menuEnvoi && (
+              <div className="fac__envoi-menu">
+                <button className="fac__envoi-opt" onClick={envoyerParEmail} disabled={!f.bill_email}>
+                  ✉ Par email{!f.bill_email && <i>aucune adresse</i>}
+                </button>
+                <button className="fac__envoi-opt" onClick={envoyerParWhatsapp} disabled={!f.bill_phone}>
+                  💬 Par WhatsApp{!f.bill_phone && <i>aucun numero</i>}
+                </button>
+              </div>
+            )}
+          </div>
+          <button className="btn btn--main" onClick={() => window.print()}>
+            Imprimer / enregistrer en PDF
+          </button>
+        </div>
       </div>
 
       <div className="fac">
