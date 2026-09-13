@@ -71,13 +71,27 @@ export default function Imprimer() {
   const numero = numeroFacture(f.number, reg["facture.prefixe"] || "INV");
   const nomSociete = reg["societe.nom"] || "FARAFINATIGNE";
   const urlPublique = typeof window !== "undefined" ? `${window.location.origin}/facture/${f.id}` : "";
-  const messageEnvoi =
+
+  /* Beaucoup de clients de la maison sont a l'etranger (UK, Pays-Bas,
+     Burkina Faso...) : le message part en francais puis en anglais,
+     l'un sous l'autre, plutot que de deviner leur langue. */
+  const messageFr =
     `Bonjour ${f.bill_to},\n\n` +
     `Voici votre facture ${numero} du ${dateFr(f.issue_date)}, d'un montant de ${dev} ${montant(total, dev)}` +
     `${solde > 0 ? ` (solde du : ${dev} ${montant(solde, dev)})` : ""}.\n` +
     `Vous pouvez la consulter et la telecharger ici :\n${urlPublique}\n\n` +
     `N'hesitez pas a nous contacter pour toute question.\n\n` +
     `Merci de votre confiance,\n${nomSociete}`;
+
+  const messageEn =
+    `Hello ${f.bill_to},\n\n` +
+    `Here is your invoice ${numero} dated ${dateFr(f.issue_date)}, for an amount of ${dev} ${montant(total, dev)}` +
+    `${solde > 0 ? ` (balance due: ${dev} ${montant(solde, dev)})` : ""}.\n` +
+    `You can view and download it here:\n${urlPublique}\n\n` +
+    `Feel free to contact us with any questions.\n\n` +
+    `Thank you for your business,\n${nomSociete}`;
+
+  const messageEnvoi = `${messageFr}\n\n—\n\n${messageEn}`;
 
   const envoyerParEmail = () => {
     if (!f.bill_email) return;
