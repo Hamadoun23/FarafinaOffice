@@ -11,8 +11,18 @@ const LARGEUR_A4 = 210;
 const HAUTEUR_A4 = 297;
 const TAILLE_MAX = 2 * 1024 * 1024;
 
+// La facture a une mise en pages "mobile" pour l'ecran (voir globals.css,
+// @media max-width: 640px) qui evite le defilement horizontal en la
+// consultant sur telephone. Mais le PDF doit rester le meme document,
+// quel que soit l'appareil qui l'a demande : on force ici la largeur de
+// mise en pages simulee par html2canvas au-dessus de ce seuil, pour que
+// le PDF capture toujours le gabarit A4 "bureau", jamais la version empilee.
+const LARGEUR_SIMULEE = 900;
+
 export async function genererPdfFacture(noeud: HTMLElement, numero: string) {
-  const canvas = await html2canvas(noeud, { scale: 2, useCORS: true, backgroundColor: "#ffffff" });
+  const canvas = await html2canvas(noeud, {
+    scale: 2, useCORS: true, backgroundColor: "#ffffff", windowWidth: LARGEUR_SIMULEE,
+  });
   const largeurImg = LARGEUR_A4;
   const hauteurImg = (canvas.height * largeurImg) / canvas.width;
 

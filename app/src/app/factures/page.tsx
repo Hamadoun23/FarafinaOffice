@@ -13,6 +13,22 @@ type Client = { id: string; name: string; company: string | null; phone: string 
 type Produit = { id: string; ref: string; fr_name: string; price: number | null };
 type Reglage = { key: string; value: string };
 
+/* Le prix, la quantite et la remise restent du texte pendant la saisie :
+   un champ controle qui les convertit en nombre a chaque frappe efface le
+   "," ou le "." des qu'il est tape (12 devient 120 avant qu'on ait pu
+   taper "12,90"). La conversion n'a lieu qu'au moment des totaux et de
+   l'enregistrement — voir n() ci-dessous. */
+type LigneForm = Omit<Ligne, "rate" | "qty" | "discount"> & {
+  rate: number | string; qty: number | string; discount: number | string;
+};
+const n = (v: unknown) => Number(String(v ?? "").replace(",", ".")) || 0;
+
+/** Nom, societe, reference et telephone d'un client, pour la recherche
+    en tapant (datalist) : le nom seul ne suffit pas a distinguer deux
+    clients homonymes, ni a retrouver quelqu'un par son numero. */
+const clientLabel = (c: Client) =>
+  `${c.name}${c.company ? ` — ${c.company}` : ""} · ${c.reference}${c.phone ? ` · ${c.phone}` : ""}`;
+
 export default function Factures() {
   const { items, chargement, charger } = useTable<Facture>("invoices", "*");
   const { items: clients } = useTable<Client>("customers", "id,name,company,phone,email,country,reference", { col: "name", asc: true });
@@ -213,7 +229,7 @@ function Editeur({
   onSaved: () => void;
 }) {
   const [f, setF] = useState<Partial<Facture>>({ ...facture });
-  const [lignes, setLignes] = useState<Ligne[]>([]);
+  const [lignes, setLignes] = useState<LigneForm[]>([]);
   const [envoi, setEnvoi] = useState(false);
   const set = (k: keyof Facture, v: unknown) => setF((x) => ({ ...x, [k]: v }));
 
@@ -226,17 +242,29 @@ function Editeur({
       .then(({ data }) => setLignes(((data as Ligne[]) ?? []).map((l) => ({ ...l, discount_type: l.discount_type || "percent" }))));
   }, [facture.id]);
 
-  const total = totalFacture(lignes);
-  const solde = soldeFacture(total, Number(f.paid_amount || 0), f.status || "brouillon");
+  /* Les totaux se calculent sur des nombres propres : lignes garde le
+     texte tel que tape (voir LigneForm), lignesNum le convertit. */
+  const lignesNum = lignes.map((l) => ({ ...l, rate: n(l.rate), qty: n(l.qty), discount: n(l.discount) }));
+  const total = totalFacture(lignesNum);
+  const solde = soldeFacture(total, n(f.paid_amount), f.status || "brouillon");
   const devise = f.currency || "USD";
 
-  function majLigne(i: number, patch: Partial<Ligne>) {
+  function majLigne(i: number, patch: Partial<LigneForm>) {
     setLignes((l) => l.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   }
 
   /** Payee => solde nul : le montant regle suit le total, sans bloquer sa retouche. */
   function choisirStatut(v: string) {
     setF((x) => ({ ...x, status: v, paid_amount: v === "payee" ? total : x.paid_amount }));
+  }
+
+  /** Tape dans "Facturer a" ou "Telephone" et choisir une suggestion de
+      la datalist reprend le client comme choisirClient ; sinon, saisie
+      libre normale (nouveau client, cree a l'enregistrement). */
+  function saisirIdentifiant(champ: "bill_to" | "bill_phone", v: string) {
+    const trouve = clients.find((c) => clientLabel(c) === v);
+    if (trouve) { choisirClient(trouve.id); return; }
+    set(champ, v);
   }
 
   /** Reprendre un client de la base remplit l'adresse de facturation. */
@@ -307,7 +335,7 @@ function Editeur({
       due_date: f.due_date || null,
       currency: devise,
       status: f.status || "brouillon",
-      paid_amount: Number(f.paid_amount || 0),
+      paid_amount: n(f.paid_amount),
       note: f.note ?? "",
     };
 
@@ -322,16 +350,16 @@ function Editeur({
       id = data.id;
     }
 
-    const utiles = lignes.filter((l) => l.description.trim() || Number(l.rate) > 0);
+    const utiles = lignes.filter((l) => l.description.trim() || n(l.rate) > 0);
     if (utiles.length) {
       const { error } = await supabase.from("invoice_items").insert(
         utiles.map((l, i) => ({
           invoice_id: id,
           product_id: l.product_id,
           description: l.description || "—",
-          rate: Number(l.rate) || 0,
-          qty: Number(l.qty) || 1,
-          discount: Number(l.discount) || 0,
+          rate: n(l.rate),
+          qty: n(l.qty) || 1,
+          discount: n(l.discount),
           discount_type: l.discount_type || "percent",
           position: i,
         }))
@@ -368,6 +396,10 @@ function Editeur({
         </>
       }
     >
+      <datalist id="clients-datalist">
+        {clients.map((c) => <option key={c.id} value={clientLabel(c)} />)}
+      </datalist>
+
       <div className="row">
         <Champ label="Client de la base" aide="Facultatif : remplit l'adresse de facturation.">
           <select value={f.customer_id ?? ""} onChange={(e) => choisirClient(e.target.value)}>
@@ -377,14 +409,16 @@ function Editeur({
             ))}
           </select>
         </Champ>
-        <Champ label="Facturer a">
-          <input value={f.bill_to ?? ""} onChange={(e) => set("bill_to", e.target.value)} />
+        <Champ label="Facturer a" aide="Tapez un nom : les clients de la base s'y proposent.">
+          <input list="clients-datalist" value={f.bill_to ?? ""}
+                 onChange={(e) => saisirIdentifiant("bill_to", e.target.value)} />
         </Champ>
       </div>
 
       <div className="row--3" style={{ display: "grid", gap: 12 }}>
         <Champ label="Telephone">
-          <input value={f.bill_phone ?? ""} onChange={(e) => set("bill_phone", e.target.value)} />
+          <input list="clients-datalist" value={f.bill_phone ?? ""}
+                 onChange={(e) => saisirIdentifiant("bill_phone", e.target.value)} />
         </Champ>
         <Champ label="E-mail">
           <input value={f.bill_email ?? ""} onChange={(e) => set("bill_email", e.target.value)} />
@@ -438,18 +472,18 @@ function Editeur({
                 <td>
                   <input className="num" inputMode="decimal" value={l.rate}
                          style={{ padding: "6px 8px", fontSize: ".82rem" }}
-                         onChange={(e) => majLigne(i, { rate: Number(e.target.value.replace(",", ".")) || 0 })} />
+                         onChange={(e) => majLigne(i, { rate: e.target.value.replace(",", ".") })} />
                 </td>
                 <td>
                   <input className="num" inputMode="decimal" value={l.qty}
                          style={{ padding: "6px 8px", fontSize: ".82rem" }}
-                         onChange={(e) => majLigne(i, { qty: Number(e.target.value.replace(",", ".")) || 0 })} />
+                         onChange={(e) => majLigne(i, { qty: e.target.value.replace(",", ".") })} />
                 </td>
                 <td>
                   <div style={{ display: "flex", gap: 4 }}>
                     <input className="num" inputMode="decimal" value={l.discount}
                            style={{ padding: "6px 8px", fontSize: ".82rem", flex: 1 }}
-                           onChange={(e) => majLigne(i, { discount: Number(e.target.value.replace(",", ".")) || 0 })} />
+                           onChange={(e) => majLigne(i, { discount: e.target.value.replace(",", ".") })} />
                     <select value={l.discount_type || "percent"}
                             style={{ padding: "6px 4px", fontSize: ".74rem", width: 46 }}
                             title="Pourcentage ou montant retire"
@@ -460,10 +494,10 @@ function Editeur({
                   </div>
                 </td>
                 <td className="num">
-                  <strong>{montant(totalLigne(l), devise)}</strong>
-                  {Number(l.discount) > 0 && (
+                  <strong>{montant(totalLigne(lignesNum[i]), devise)}</strong>
+                  {n(l.discount) > 0 && (
                     <div className="sub" style={{ color: "var(--err)" }}>
-                      −{montant(remiseLigne(l), devise)}
+                      −{montant(remiseLigne(lignesNum[i]), devise)}
                     </div>
                   )}
                 </td>
@@ -486,7 +520,7 @@ function Editeur({
       <div className="row" style={{ marginTop: 18 }}>
         <Champ label="Deja regle" aide={f.status === "payee" ? "Facture payee : aligne sur le total." : "Le solde du se calcule tout seul."}>
           <input className="num" inputMode="decimal" value={f.paid_amount ?? 0}
-                 onChange={(e) => set("paid_amount", Number(e.target.value.replace(",", ".")) || 0)} />
+                 onChange={(e) => set("paid_amount", e.target.value.replace(",", "."))} />
         </Champ>
         <Champ label="Statut">
           <select value={f.status ?? "brouillon"} onChange={(e) => choisirStatut(e.target.value)}>
