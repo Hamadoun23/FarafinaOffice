@@ -7,6 +7,7 @@
 export type Facture = {
   id: string; number: number; customer_id: string | null; order_id: string | null;
   bill_to: string; bill_phone: string | null; bill_email: string | null; bill_address: string | null;
+  bill_country: string | null; shipping_address: string | null;
   issue_date: string; due_date: string | null; currency: string; status: string;
   paid_amount: number; note: string; created_at: string;
 };

@@ -276,7 +276,7 @@ function Editeur({
       bill_to: c ? (c.company ? `${c.name} — ${c.company}` : c.name) : x.bill_to,
       bill_phone: c?.phone ?? x.bill_phone ?? null,
       bill_email: c?.email ?? x.bill_email ?? null,
-      bill_address: c?.country ?? x.bill_address ?? null,
+      bill_country: c?.country ?? x.bill_country ?? null,
     }));
   }
 
@@ -305,7 +305,7 @@ function Editeur({
 
     const { data, error } = await supabase.from("customers").insert({
       name: nomSeul, company: societe, email, phone: tel,
-      country: f.bill_address?.trim() || null, source: "facture",
+      country: f.bill_country?.trim() || null, source: "facture",
       notes: "Fiche creee automatiquement depuis une facture.",
     }).select("id").single();
     return !error && data ? data.id : null;
@@ -331,6 +331,8 @@ function Editeur({
       bill_phone: f.bill_phone || null,
       bill_email: f.bill_email || null,
       bill_address: f.bill_address || null,
+      bill_country: f.bill_country || null,
+      shipping_address: f.shipping_address || null,
       issue_date: f.issue_date || new Date().toISOString().slice(0, 10),
       due_date: f.due_date || null,
       currency: devise,
@@ -423,8 +425,17 @@ function Editeur({
         <Champ label="E-mail">
           <input value={f.bill_email ?? ""} onChange={(e) => set("bill_email", e.target.value)} />
         </Champ>
-        <Champ label="Adresse / pays">
+        <Champ label="Pays / Country">
+          <input value={f.bill_country ?? ""} onChange={(e) => set("bill_country", e.target.value)} />
+        </Champ>
+      </div>
+
+      <div className="row" style={{ marginBottom: 12 }}>
+        <Champ label="Adresse">
           <input value={f.bill_address ?? ""} onChange={(e) => set("bill_address", e.target.value)} />
+        </Champ>
+        <Champ label="Adresse de livraison / Shipping address" aide="Si differente de l'adresse ci-dessus.">
+          <input value={f.shipping_address ?? ""} onChange={(e) => set("shipping_address", e.target.value)} />
         </Champ>
       </div>
 

@@ -76,11 +76,21 @@ const FactureRendu = forwardRef<HTMLDivElement, Props>(function FactureRendu({ f
 
       {/* ---------- destinataire ---------- */}
       <section className="fac__client">
-        <span>BILL TO</span>
-        <h2>{f.bill_to}{client?.reference && <i className="fac__ref">{client.reference}</i>}</h2>
-        {f.bill_phone && <p className="fac__ico">☏ {f.bill_phone}</p>}
-        {f.bill_email && <p>{f.bill_email}</p>}
-        {f.bill_address && <p>{f.bill_address}</p>}
+        <div className="fac__client-col">
+          <span>BILL TO</span>
+          <h2>{f.bill_to}{client?.reference && <i className="fac__ref">{client.reference}</i>}</h2>
+          {f.bill_phone && <p className="fac__ico">☏ {f.bill_phone}</p>}
+          {f.bill_email && <p>{f.bill_email}</p>}
+          {(f.bill_address || f.bill_country) && (
+            <p>{[f.bill_address, f.bill_country].filter(Boolean).join(", ")}</p>
+          )}
+        </div>
+        {f.shipping_address && (
+          <div className="fac__client-col">
+            <span>SHIP TO</span>
+            <p>{f.shipping_address}</p>
+          </div>
+        )}
       </section>
 
       {/* ---------- lignes ---------- */}

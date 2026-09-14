@@ -580,11 +580,18 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .fac__meta b { font-weight: 600; font-size: 10pt; }
 
-.fac__client { margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+.fac__client {
+  margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb;
+  display: flex; gap: 32px; flex-wrap: wrap;
+}
+.fac__client-col { flex: 1; min-width: 180px; }
 .fac__client span {
   font-size: 7.6pt; letter-spacing: .12em; text-transform: uppercase; color: #6b7280; font-weight: 700;
 }
 .fac__client h2 { font-size: 12.5pt; font-weight: 700; margin: 6px 0 4px; color: #1f242e; display: flex; align-items: baseline; gap: 8px; }
+/* Seule la colonne SHIP TO passe directement du libelle au texte, sans
+   h2 entre les deux (celui-ci apporte deja sa propre marge). */
+.fac__client-col span + p { margin-top: 6px; }
 /* La reference client, rappelee a cote de son nom : facile a reciter au
    telephone ou a retrouver dans l'ecran Clients. */
 .fac__ref { font-style: normal; font-weight: 700; font-size: 8pt; letter-spacing: .06em; color: #9aa1ac; }
