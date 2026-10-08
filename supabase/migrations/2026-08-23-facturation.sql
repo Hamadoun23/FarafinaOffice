@@ -68,7 +68,7 @@ create table if not exists public.invoices (
   due_date      date,
   currency      text not null default 'USD',
   status        text not null default 'brouillon',
-    -- brouillon | envoyee | payee | partielle | annulee
+    -- brouillon | envoyee | non_payee | payee | partielle | annulee
   paid_amount   numeric(12,2) not null default 0,
   note          text default '',
 

@@ -22,6 +22,7 @@ export type LigneFacture = {
 export const STATUTS_FACTURE = [
   { v: "brouillon", l: "Brouillon", t: "mute" },
   { v: "envoyee", l: "Envoyee", t: "info" },
+  { v: "non_payee", l: "Non payee", t: "err" },
   { v: "partielle", l: "Partiellement payee", t: "warn" },
   { v: "payee", l: "Payee", t: "ok" },
   { v: "annulee", l: "Annulee", t: "err" },
